@@ -1,0 +1,469 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body.overlay-body {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background-color: #05070b;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Kanit', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Master 9:16 Stage (Strict 9:16 Auto-fit in Any Viewport: Desktop, Mobile, or OBS) */
+.stream-stage {
+  position: relative;
+  height: 100vh;
+  width: calc(100vh * (9 / 16));
+  max-width: 100vw;
+  max-height: 100vh;
+  aspect-ratio: 9 / 16;
+  background-color: #0c0f17;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
+  container-type: inline-size;
+}
+
+@media (min-aspect-ratio: 9/16) {
+  .stream-stage {
+    height: 100vh;
+    width: calc(100vh * (9 / 16));
+  }
+}
+
+@media (max-aspect-ratio: 9/16) {
+  .stream-stage {
+    width: 100vw;
+    height: calc(100vw * (16 / 9));
+  }
+}
+
+/* Layer Base */
+.layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Layer 1: Background */
+.layer-background {
+  z-index: 1;
+}
+
+.bg-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  transition: opacity 0.5s ease;
+}
+
+/* Layer 2: Avatar with Canvas */
+.layer-avatar {
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* High-Fidelity LivePortrait / MuseTalk Video Avatar */
+.avatar-video-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+#avatar-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  transform-origin: center center;
+  animation: avatarOrganicMotion 5.2s infinite ease-in-out;
+}
+
+@keyframes avatarOrganicMotion {
+  0% {
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+  28% {
+    transform: scale(1.002, 1.005) translateY(-3px) rotate(0.12deg);
+  }
+  50% {
+    transform: scale(1.004, 1.008) translateY(-6px) rotate(0deg);
+  }
+  75% {
+    transform: scale(1.002, 1.005) translateY(-2px) rotate(-0.12deg);
+  }
+  100% {
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+}
+
+/* Cinematic Studio Lighting Vignette & Depth */
+.stream-stage::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 30%, transparent 62%, rgba(12, 15, 23, 0.35) 100%),
+              linear-gradient(to bottom, rgba(12, 15, 23, 0.2) 0%, transparent 18%, transparent 75%, rgba(12, 15, 23, 0.5) 100%);
+  z-index: 5;
+}
+
+/* Layer 3: Top Header */
+.layer-header {
+  z-index: 10;
+  padding: 3% 4%;
+}
+
+.header-banner {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.4cqw, 16px);
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  padding: clamp(6px, 1cqw, 12px) clamp(12px, 2cqw, 24px);
+  border-radius: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  width: fit-content;
+}
+
+.live-pill {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 0.8cqw, 8px);
+  background: #fe2c55;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: clamp(0.75rem, 2.4cqw, 1.1rem);
+  padding: clamp(2px, 0.5cqw, 4px) clamp(8px, 1.4cqw, 14px);
+  border-radius: 20px;
+  letter-spacing: 1px;
+}
+
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  animation: pulseLive 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseLive {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.85); opacity: 0.6; }
+}
+
+.shop-badge {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 0.8cqw, 8px);
+  color: #fff;
+  font-weight: 600;
+  font-size: clamp(0.8rem, 2.6cqw, 1.25rem);
+  letter-spacing: 0.5px;
+}
+
+.viewer-chip {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 0.6cqw, 6px);
+  background: rgba(255, 255, 255, 0.12);
+  padding: clamp(2px, 0.4cqw, 4px) clamp(8px, 1.2cqw, 12px);
+  border-radius: 14px;
+  color: #94a3b8;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(0.75rem, 2.2cqw, 1rem);
+  font-weight: 600;
+}
+
+/* Layer 4: Pinned Product Spotlight Badge */
+.layer-product {
+  z-index: 15;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 3% 4%;
+  padding-bottom: 11%;
+}
+
+.product-badge-card {
+  background: linear-gradient(135deg, rgba(18, 24, 38, 0.94) 0%, rgba(30, 41, 59, 0.90) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 2px solid rgba(254, 44, 85, 0.6);
+  border-radius: clamp(14px, 2.5cqw, 24px);
+  padding: clamp(14px, 2.4cqw, 24px) clamp(16px, 2.8cqw, 28px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 25px rgba(254, 44, 85, 0.3);
+  animation: badgeEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom center;
+}
+
+@keyframes badgeEntrance {
+  from { opacity: 0; transform: translateY(30px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.badge-tag-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.2cqw, 12px);
+  margin-bottom: clamp(6px, 1.2cqw, 12px);
+  flex-wrap: nowrap;
+}
+
+.tag-basket {
+  background: #fe2c55;
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(0.75rem, 2.4cqw, 1.15rem);
+  padding: clamp(2px, 0.6cqw, 4px) clamp(8px, 1.6cqw, 16px);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(254, 44, 85, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tag-promo {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-weight: 700;
+  font-size: clamp(0.7rem, 2.2cqw, 1rem);
+  padding: clamp(2px, 0.5cqw, 4px) clamp(8px, 1.4cqw, 14px);
+  border-radius: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50%;
+  flex-shrink: 1;
+}
+
+.tag-stock {
+  background: rgba(255, 255, 255, 0.1);
+  color: #38bdf8;
+  font-weight: 600;
+  font-size: clamp(0.7rem, 2cqw, 0.95rem);
+  padding: clamp(2px, 0.5cqw, 4px) clamp(6px, 1.2cqw, 12px);
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge-title {
+  color: #f8fafc;
+  font-size: clamp(0.95rem, 3.2cqw, 1.45rem);
+  font-weight: 700;
+  line-height: 1.35;
+  margin-bottom: clamp(8px, 1.4cqw, 14px);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.badge-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(6px, 1cqw, 10px);
+}
+
+.price-currency {
+  color: #22c55e;
+  font-size: clamp(1.1rem, 3.5cqw, 1.6rem);
+  font-weight: 800;
+  font-family: 'Outfit', sans-serif;
+}
+
+.price-val {
+  color: #22c55e;
+  font-size: clamp(1.8rem, 6cqw, 2.8rem);
+  font-weight: 900;
+  font-family: 'Outfit', sans-serif;
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+}
+
+.price-orig {
+  color: #64748b;
+  font-size: clamp(0.9rem, 2.8cqw, 1.4rem);
+  font-weight: 600;
+  text-decoration: line-through;
+  margin-left: 4px;
+}
+
+.basket-action-pill {
+  margin-left: auto;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font-weight: 700;
+  font-size: clamp(0.75rem, 2.4cqw, 1.15rem);
+  padding: clamp(6px, 1.2cqw, 10px) clamp(10px, 2cqw, 20px);
+  border-radius: 16px;
+  animation: bounceArrow 1.5s infinite ease-in-out;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@keyframes bounceArrow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Layer 5: Real-Time Subtitles */
+.layer-subtitles {
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 3% 4%;
+  padding-bottom: 4%;
+}
+
+.subtitles-container {
+  width: 100%;
+  background: rgba(10, 14, 23, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1.5px solid rgba(254, 44, 85, 0.35);
+  border-radius: 20px;
+  padding: 18px 24px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.subtitles-container.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.subtitles-seller-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fe2c55;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.speaker-icon {
+  font-size: 1.2rem;
+  animation: pulseIcon 1s infinite alternate;
+}
+
+@keyframes pulseIcon {
+  from { transform: scale(1); }
+  to { transform: scale(1.25); filter: drop-shadow(0 0 6px #fe2c55); }
+}
+
+.subtitles-text {
+  color: #ffffff;
+  font-size: clamp(1rem, 3.4cqw, 1.6rem);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Layer 6: Gift Celebration Banner */
+.layer-alerts {
+  z-index: 25;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+
+.gift-banner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.95), rgba(244, 63, 94, 0.95));
+  backdrop-filter: blur(20px);
+  padding: 20px 36px;
+  border-radius: 32px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 20px 60px rgba(244, 63, 94, 0.6), 0 0 30px rgba(255, 255, 255, 0.3);
+  opacity: 0;
+  transform: scale(0.7) translateY(40px);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.gift-banner.show {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.gift-avatar {
+  font-size: 3.5rem;
+  animation: wobbleGift 0.8s infinite ease-in-out;
+}
+
+@keyframes wobbleGift {
+  0%, 100% { transform: rotate(-8deg) scale(1); }
+  50% { transform: rotate(8deg) scale(1.15); }
+}
+
+.gift-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.gift-sender {
+  color: #ffffff;
+  font-size: 1.7rem;
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.gift-detail {
+  color: #ffedd5;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+/* Canvas Confetti */
+#confetti-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 30;
+}
+

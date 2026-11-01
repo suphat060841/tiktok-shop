@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TikTok Live Studio - Video Overlay (9:16)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="stream-overlay.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="overlay-body">
+  <!-- 1080x1920 Master Stage (Responsive 9:16) -->
+  <div class="stream-stage" id="stream-stage">
+
+    <!-- Layer 1: Background Scene -->
+    <div class="layer layer-background" id="layer-background">
+      <img src="/assets/avatar_idle.jpg" alt="Studio Background" id="bg-image" class="bg-media">
+    </div>
+
+    <!-- Layer 2: Digital Human / Avatar Layer (Dual Mode: LivePortrait MP4 Video or Canvas Morph) -->
+    <div class="layer layer-avatar" id="layer-avatar">
+      <!-- High-Fidelity Video Avatar Elements (Auto-activated if MP4 exists) -->
+      <video id="video-avatar-idle" src="/assets/avatar_idle.mp4" loop muted playsinline class="avatar-video-layer" style="opacity: 0;"></video>
+      <video id="video-avatar-talk" src="/assets/avatar_talking.mp4" loop muted playsinline class="avatar-video-layer" style="opacity: 0;"></video>
+
+      <!-- 60 FPS Canvas Morph Avatar Elements -->
+      <canvas id="avatar-canvas" width="1080" height="1920"></canvas>
+      <!-- Hidden source images for Animation engine -->
+      <img id="img-avatar-idle" src="/assets/avatar_idle.jpg" style="display:none;" crossorigin="anonymous">
+      <img id="img-avatar-speaking" src="/assets/avatar_speaking.jpg" style="display:none;" crossorigin="anonymous">
+      <img id="img-avatar-blink" src="/assets/avatar_blink.jpg" style="display:none;" crossorigin="anonymous">
+    </div>
+
+    <!-- Layer 3: Top Live Branding & Status Header -->
+    <div class="layer layer-header">
+      <div class="header-banner">
+        <div class="live-pill">
+          <span class="pulse-dot"></span>
+          <span>LIVE</span>
+        </div>
+        <div class="shop-badge">
+          <span class="shop-icon">🛍️</span>
+          <span class="shop-name" id="overlay-shop-name">TIKTOK SHOP OFFICIAL</span>
+        </div>
+        <div class="viewer-chip" id="overlay-viewer-chip">
+          <span>👥</span>
+          <span id="overlay-viewers">1,250</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 4: Pinned Product Spotlight Badge (Lower Center/Right) -->
+    <div class="layer layer-product">
+      <div class="product-badge-card" id="product-badge-card">
+        <div class="badge-tag-row">
+          <span class="tag-basket" id="badge-basket-num">ตะกร้าที่ 1</span>
+          <span class="tag-promo" id="badge-promo-text">🔥 ส่งฟรีในไลฟ์</span>
+          <span class="tag-stock" id="badge-stock-text">เหลือ 45 ชิ้น</span>
+        </div>
+        <div class="badge-title" id="badge-title">เสื้อยืดสไตล์โอเวอร์ไซส์ มินิมอล ผ้านุ่มระบายอากาศ</div>
+        <div class="badge-price-row">
+          <span class="price-currency">฿</span>
+          <span class="price-val" id="badge-price">199</span>
+          <span class="price-orig" id="badge-orig-price">฿350</span>
+          <div class="basket-action-pill">
+            <span>👇 กดตะกร้าซ้ายล่าง</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 5: Real-Time Live Speech Subtitles (Closed Captions) -->
+    <div class="layer layer-subtitles">
+      <div class="subtitles-container" id="subtitles-container">
+        <div class="subtitles-seller-tag">
+          <span class="speaker-icon">⚡</span>
+          <span class="speaker-name">แม่ค้า AI:</span>
+        </div>
+        <div class="subtitles-text" id="subtitles-text">ยินดีต้อนรับเข้าสู่ไลฟ์สดนะคะ สนใจชิ้นไหนจิ้มตะกร้าได้เลยค่า</div>
+      </div>
+    </div>
+
+    <!-- Layer 6: Gift Celebration & Interactive Events Overlay -->
+    <div class="layer layer-alerts">
+      <div class="gift-banner" id="gift-banner">
+        <div class="gift-avatar">🎁</div>
+        <div class="gift-info">
+          <div class="gift-sender" id="gift-sender">คุณลูกค้า</div>
+          <div class="gift-detail" id="gift-detail">ส่ง ดอกกุหลาบ x5 🎉</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas Confetti Container for Celebrations -->
+    <canvas id="confetti-canvas" width="1080" height="1920"></canvas>
+  </div>
+
+  <script src="stream-overlay.js"></script>
+</body>
+</html>
+

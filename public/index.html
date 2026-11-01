@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TikTok Live AI - Smart Selling Studio v3.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="dashboard-body">
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="nav-brand">
+      <div class="brand-icon">🛍️</div>
+      <div class="brand-text">
+        <h1>TikTok Live AI</h1>
+        <span class="version-tag">SMART DIRECTOR v3.0</span>
+      </div>
+    </div>
+
+    <!-- Live Connection Box -->
+    <div class="nav-connection">
+      <div class="input-group">
+        <span class="input-prefix">@</span>
+        <input type="text" id="input-username" placeholder="ใส่ชื่อบัญชี TikTok (เช่น shop_official)..." autocomplete="off">
+        <button id="btn-connect" class="btn btn-primary">เชื่อมต่อห้องไลฟ์</button>
+      </div>
+      <div class="status-indicator disconnected" id="status-badge">
+        <span class="status-dot"></span>
+        <span id="status-text">ออฟไลน์ (พร้อมจำลอง)</span>
+      </div>
+    </div>
+
+    <!-- Live Metrics Counter -->
+    <div class="nav-metrics">
+      <div class="metric-card">
+        <span class="metric-label">👥 ผู้ชม</span>
+        <span class="metric-val" id="metric-viewers">1,250</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">❤️ กดถูกใจ</span>
+        <span class="metric-val" id="metric-likes">14.8K</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">🎁 ของขวัญ</span>
+        <span class="metric-val" id="metric-gifts">86</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace Layout -->
+  <main class="workspace-grid">
+
+    <!-- Left Column: AI Brain & Audio Settings -->
+    <aside class="col-panel left-panel">
+      <!-- Persona & Voice Card -->
+      <div class="glass-card">
+        <h2 class="card-title">🌸 บุคลิกและเสียงพูดแม่ค้า AI</h2>
+        <div class="form-group">
+          <label class="form-label">สไตล์การพูด (Persona)</label>
+          <select id="select-persona" class="form-select">
+            <option value="sweet" selected>🌸 สายหวาน: อ่อนหวาน เป็นกันเอง (ลงท้ายนะคะ/ค่า)</option>
+            <option value="hype">🔥 สายไฮป์: กระฉับกระเฉง พลังงานสูง เร่งปิดยอด ด่วนๆๆ</option>
+            <option value="pro">💼 สายมืออาชีพ: สุภาพ ข้อมูลแน่น น่าเชื่อถือ</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">เสียงภาษาไทยสังเคราะห์ (Neural TTS)</label>
+          <select id="select-voice" class="form-select">
+            <option value="th-TH-PremwadeeNeural" selected>หญิง: คุณเปรมวดี (เสียงหวาน สดใส เป็นธรรมชาติ)</option>
+            <option value="th-TH-NiwatNeural">ชาย: คุณนิวัฒน์ (เสียงชัดเจน หนักแน่น ชัดถ้อยชัดคำ)</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label class="form-label">ความเร็วเสียง</label>
+            <select id="select-speed" class="form-select">
+              <option value="-10%">ช้า (-10%)</option>
+              <option value="+0%" selected>ปกติ (+0%)</option>
+              <option value="+10%">กระฉับกระเฉง (+10%)</option>
+              <option value="+20%">เร็ว (+20%)</option>
+            </select>
+          </div>
+          <div class="form-group col-6">
+            <label class="form-label">ระดับเสียง (<span id="val-volume">100%</span>)</label>
+            <input type="range" id="range-volume" min="0" max="1" step="0.05" value="1" class="form-range">
+          </div>
+        </div>
+
+        <!-- Automation Toggles (Smart Director) -->
+        <div class="toggles-container">
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-welcome" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">👋 ต้อนรับผู้ชมที่เข้ามาใหม่ด้วยเสียงพูด</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-comments" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">💬 ตอบคอมเมนต์และคำถาม FAQ อัตโนมัติ</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-gifts" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">🎁 ขอบคุณของขวัญทันที (พร้อม Sound FX)</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-auto-pitch" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">📢 แนะนำสินค้าอัตโนมัติเมื่อห้องเงียบเกิน 35 วิ</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Soundboard & BGM Card -->
+      <div class="glass-card">
+        <h2 class="card-title">🎵 แผงควบคุมเสียงและ Sound FX</h2>
+        <div class="sound-buttons-grid">
+          <button class="btn btn-sfx" data-sfx="ding">🔔 กระดิ่ง (Ding)</button>
+          <button class="btn btn-sfx" data-sfx="cash">💰 เงินเข้า (Cash)</button>
+          <button class="btn btn-sfx" data-sfx="cheer">🎉 ปรบมือ (Cheer)</button>
+          <button class="btn btn-sfx" data-sfx="bell">🛎️ กริ่งเตือน (Bell)</button>
+        </div>
+        <div class="bgm-control-bar">
+          <button id="btn-toggle-bgm" class="btn btn-outline-primary">🎵 เปิดเพลงคลอ BGM</button>
+          <div class="bgm-vol-box">
+            <span>ความดัง:</span>
+            <input type="range" id="range-bgm-volume" min="0" max="0.8" step="0.05" value="0.25" class="form-range">
+          </div>
+        </div>
+        <small class="hint-text">* มีระบบ Auto-Ducking: เพลงจะเบาลงอัตโนมัติ 80% ทันทีที่แม่ค้าเริ่มพูด</small>
+      </div>
+
+      <!-- Manual Broadcast Card -->
+      <div class="glass-card">
+        <h2 class="card-title">📢 สั่งให้แม่ค้า AI พูดสดทันที</h2>
+        <div class="manual-speak-box">
+          <input type="text" id="manual-speak-input" placeholder="พิมพ์ข้อความที่ต้องการให้แม่ค้า AI พูด..." autocomplete="off">
+          <button id="btn-manual-speak" class="btn btn-accent">สั่งพูด</button>
+        </div>
+        <button id="btn-stop-speech" class="btn btn-danger-full">⏹️ หยุดเสียงพูดทั้งหมดทันที</button>
+      </div>
+    </aside>
+
+    <!-- Center Column: Tabs (Live Feed, 9:16 Monitor, One-Click Script Generator) -->
+    <section class="col-panel center-panel">
+      <div class="tabs-header">
+        <div class="tabs-nav">
+          <button class="tab-btn active" data-tab="tab-feed">💬 คอมเมนต์สด (Live Feed)</button>
+          <button class="tab-btn" data-tab="tab-monitor">📺 จอภาพไลฟ์สด 9:16 (OBS Output)</button>
+          <button class="tab-btn" data-tab="tab-script-gen">✨ AI สกัดสคริปต์ขาย (BocaLive)</button>
+        </div>
+        <div class="tabs-actions">
+          <button id="btn-manage-faqs" class="btn btn-sm btn-glass">⚙️ จัดการ FAQ (<span id="faq-count">4</span>)</button>
+          <button id="btn-clear-feed" class="btn btn-sm btn-glass">ล้างประวัติ</button>
+        </div>
+      </div>
+
+      <!-- Tab 1: Live Feed & Simulation -->
+      <div class="tab-pane active" id="tab-feed">
+        <div class="simulation-bar">
+          <span class="sim-label">⚡ ปุ่มทดสอบสด:</span>
+          <button class="btn btn-xs btn-sim" id="btn-sim-shipping">ถามเรื่องส่งของ</button>
+          <button class="btn btn-xs btn-sim" id="btn-sim-cod">ถามเก็บเงินปลายทาง</button>
+          <button class="btn btn-xs btn-sim" id="btn-sim-shirt">ถามเสื้อตะกร้า 1</button>
+          <button class="btn btn-xs btn-sim" id="btn-sim-gift">ส่งกุหลาบ x5 🌹</button>
+          <button class="btn btn-xs btn-sim" id="btn-sim-join">มีคนเข้าห้อง 👤</button>
+        </div>
+
+        <div class="live-feed-container" id="live-feed-container">
+          <!-- Feed items injected via app.js -->
+          <div class="feed-item system-notice">
+            <span class="feed-time">12:00:00</span>
+            <span class="feed-text">🚀 ระบบ TikTok Live AI เริ่มต้นทำงานเรียบร้อยแล้ว พร้อมรับการเชื่อมต่อ</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: 9:16 Studio Output Monitor -->
+      <div class="tab-pane" id="tab-monitor">
+        <div class="monitor-toolbar">
+          <div class="obs-copy-box">
+            <span class="obs-label">🔗 ลิงก์ Browser Source สำหรับ OBS / TikTok Live Studio:</span>
+            <input type="text" id="obs-url-input" value="http://localhost:3000/stream-overlay" readonly>
+            <button id="btn-copy-obs" class="btn btn-sm btn-primary">คัดลอก URL</button>
+          </div>
+          <div class="monitor-note">แนะนำตั้งค่าขนาดใน OBS เป็น <strong>1080 x 1920</strong> (สัดส่วน 9:16 แนวตั้ง)</div>
+        </div>
+        <div class="monitor-wrapper">
+          <div class="phone-frame">
+            <iframe src="/stream-overlay?muted=1" id="monitor-iframe" title="Stream Overlay Preview"></iframe>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: One-Click AI Script Generator (Inspired by BocaLive) -->
+      <div class="tab-pane" id="tab-script-gen">
+        <div class="script-gen-card">
+          <h3>🪄 AI ช่วยเขียนสคริปต์ปิดการขาย 3 สไตล์อัตโนมัติ</h3>
+          <p class="script-gen-desc">วางชื่อสินค้าและจุดขายสั้นๆ ระบบจะสังเคราะห์สคริปต์พร้อมใช้สำหรับ TikTok Shop ให้ทันที</p>
+          
+          <div class="form-group">
+            <label class="form-label">ชื่อสินค้า (Product Title)</label>
+            <input type="text" id="gen-title" placeholder="เช่น เสื้อยืดโอเวอร์ไซส์ มินิมอล ผ้านุ่ม..." class="form-input">
+          </div>
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label class="form-label">ราคาโปรโมชั่น (บาท)</label>
+              <input type="text" id="gen-price" placeholder="199" class="form-input">
+            </div>
+            <div class="form-group col-6">
+              <label class="form-label">โปรโมชั่นเสริม</label>
+              <input type="text" id="gen-promo" placeholder="ส่งฟรีในไลฟ์ + คูปองลด 20 บ." class="form-input">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">จุดเด่น / จุดขายสำคัญ</label>
+            <input type="text" id="gen-highlights" placeholder="เช่น ผ้าคอตตอนแท้ 100% ระบายอากาศดีเยี่ยม ซักไม่ย้วย ไม่หด..." class="form-input">
+          </div>
+          <button id="btn-generate-ai-script" class="btn btn-accent btn-full">✨ สกัดสคริปต์การขาย 3 สไตล์ทันที</button>
+
+          <!-- Generated Results -->
+          <div class="generated-scripts-container hidden" id="generated-scripts-container">
+            <div class="script-result-box">
+              <div class="script-result-header">
+                <span class="style-tag sweet">🌸 สไตล์สายหวาน (Sweet & Friendly)</span>
+                <button class="btn btn-xs btn-primary btn-use-script" data-style="sweet">🔊 สั่ง AI พูดบทนี้</button>
+              </div>
+              <p class="script-content" id="result-sweet"></p>
+            </div>
+
+            <div class="script-result-box">
+              <div class="script-result-header">
+                <span class="style-tag hype">🔥 สไตล์สายไฮป์ (Hype & Urgent)</span>
+                <button class="btn btn-xs btn-primary btn-use-script" data-style="hype">🔊 สั่ง AI พูดบทนี้</button>
+              </div>
+              <p class="script-content" id="result-hype"></p>
+            </div>
+
+            <div class="script-result-box">
+              <div class="script-result-header">
+                <span class="style-tag pro">💼 สไตล์สายมืออาชีพ (Professional)</span>
+                <button class="btn btn-xs btn-primary btn-use-script" data-style="pro">🔊 สั่ง AI พูดบทนี้</button>
+              </div>
+              <p class="script-content" id="result-pro"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Pinned Product & Catalog -->
+    <aside class="col-panel right-panel">
+      <!-- Pinned Spotlight Card -->
+      <div class="glass-card pinned-card-highlight">
+        <div class="pinned-header-tag">
+          <span class="pin-icon">📌</span>
+          <span>สินค้าที่กำลังปักหมุดในไลฟ์</span>
+        </div>
+        <h3 class="pinned-title" id="pinned-title">กำลังโหลดสินค้า...</h3>
+        <div class="pinned-price-box">
+          <span class="pinned-currency">฿</span>
+          <span class="pinned-price" id="pinned-price">0</span>
+          <span class="pinned-orig" id="pinned-orig"></span>
+          <span class="pinned-stock" id="pinned-stock">เหลือ 0 ชิ้น</span>
+        </div>
+        <p class="pinned-promo" id="pinned-promo"></p>
+
+        <div class="pinned-actions">
+          <button id="btn-urgency-alert" class="btn btn-warning btn-full">
+            🚨 ส่งแจ้งเตือนสต็อกด่วน! ("เหลือไม่กี่ชิ้น!")
+          </button>
+          <button id="btn-decrement-stock" class="btn btn-outline-primary btn-full mt-2">
+            🛒 ขายออก 1 ชิ้น (-1 สต็อก)
+          </button>
+        </div>
+      </div>
+
+      <!-- Product Catalog List -->
+      <div class="glass-card">
+        <div class="flex-between mb-3">
+          <h2 class="card-title mb-0">📦 รายการสินค้าในไลฟ์ (<span id="product-count">0</span>)</h2>
+          <button id="btn-open-add-product" class="btn btn-xs btn-primary">+ เพิ่มสินค้า</button>
+        </div>
+        <div class="product-list" id="product-list">
+          <!-- Injected via app.js -->
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Modal: FAQ Rules Manager -->
+  <div class="modal-overlay hidden" id="modal-faqs">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>⚙️ จัดการกฎตอบคอมเมนต์อัตโนมัติ (Smart Director FAQs)</h2>
+        <button class="modal-close-btn" id="btn-close-faq-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="add-faq-form">
+          <h3>+ เพิ่มกฎคำถาม-คำตอบใหม่</h3>
+          <div class="form-group">
+            <label class="form-label">หัวข้อคำถาม</label>
+            <input type="text" id="new-faq-title" placeholder="เช่น นโยบายการจัดส่งสินค้า..." class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">คำสำคัญ (Keywords คั่นด้วยจุลภาค)</label>
+            <input type="text" id="new-faq-keywords" placeholder="เช่น ส่งของ, กี่วันถึง, ค่าส่ง, ส่งฟรี..." class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">คำตอบที่ให้แม่ค้า AI พูด</label>
+            <textarea id="new-faq-answer" rows="3" placeholder="ข้อความที่ต้องการให้ AI ตอบเมื่อเจอคำสำคัญ..." class="form-textarea"></textarea>
+          </div>
+          <button id="btn-save-new-faq" class="btn btn-primary">บันทึกกฎ FAQ</button>
+        </div>
+
+        <div class="faq-rules-list" id="faq-rules-list">
+          <!-- Injected via app.js -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Product -->
+  <div class="modal-overlay hidden" id="modal-product">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="modal-product-title">📦 เพิ่มสินค้าใหม่ในไลฟ์</h2>
+        <button class="modal-close-btn" id="btn-close-product-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-product-id">
+        <div class="form-group">
+          <label class="form-label">ชื่อสินค้า</label>
+          <input type="text" id="product-form-title" class="form-input" placeholder="ชื่อสินค้าที่จะแสดงในไลฟ์...">
+        </div>
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label class="form-label">ราคาขายในไลฟ์ (บาท)</label>
+            <input type="text" id="product-form-price" class="form-input" placeholder="199">
+          </div>
+          <div class="form-group col-6">
+            <label class="form-label">ราคาปกติ (บาท)</label>
+            <input type="text" id="product-form-orig" class="form-input" placeholder="350">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label class="form-label">จำนวนสต็อก</label>
+            <input type="number" id="product-form-stock" class="form-input" placeholder="50">
+          </div>
+          <div class="form-group col-6">
+            <label class="form-label">ข้อความโปรโมชั่น</label>
+            <input type="text" id="product-form-promo" class="form-input" placeholder="🔥 ส่งฟรีในไลฟ์">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">คำสำคัญเรียกสินค้า (Keywords คั่นด้วยจุลภาค)</label>
+          <input type="text" id="product-form-keywords" class="form-input" placeholder="เสื้อ, เสื้อยืด, โอเวอร์ไซส์, ตะกร้า 1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">สคริปต์บรรยายแนะนำสินค้า (AI Pitch Script)</label>
+          <textarea id="product-form-script" rows="4" class="form-textarea" placeholder="สคริปต์ที่ต้องการให้แม่ค้าพูดเมื่อปักหมุดสินค้านี้..."></textarea>
+        </div>
+        <button id="btn-save-product" class="btn btn-primary btn-full">บันทึกข้อมูลสินค้า</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+

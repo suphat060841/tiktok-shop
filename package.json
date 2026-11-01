@@ -1,0 +1,29 @@
+{
+  "name": "tiktok-live-ai",
+  "version": "3.0.0",
+  "description": "Proprietary AI Live Streaming & Automated Selling System for TikTok Shop",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node verify_system.mjs"
+  },
+  "keywords": [
+    "tiktok-live",
+    "ai-seller",
+    "digital-human",
+    "tts",
+    "bocalive"
+  ],
+  "author": "Antigravity Pair Programmer",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "tiktok-live-connector": "^2.5.0"
+  }
+}
+
