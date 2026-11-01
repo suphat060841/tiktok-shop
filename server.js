@@ -361,6 +361,110 @@ class SessionTracker {
   }
 }
 
+class FlashSaleManager {
+  constructor() {
+    this.active = false;
+    this.remainingSeconds = 0;
+    this.totalSeconds = 0;
+    this.productId = null;
+    this.halfAlertTriggered = false;
+    this.oneMinAlertTriggered = false;
+    this._interval = null;
+  }
+
+  start(durationMinutes = 5, productId = null) {
+    this.stop(); // Stop any existing running timer cleanly
+
+    this.active = true;
+    this.productId = productId !== null ? Number(productId) : null;
+    this.totalSeconds = Math.max(10, Math.round(Number(durationMinutes) * 60));
+    this.remainingSeconds = this.totalSeconds;
+    this.halfAlertTriggered = false;
+    this.oneMinAlertTriggered = false;
+
+    // Determine product title for alert
+    let prodTitle = 'สินค้าโปรพิเศษ';
+    if (this.productId && typeof productManager !== 'undefined') {
+      const p = productManager.getById(this.productId);
+      if (p) prodTitle = p.title || `ตะกร้าที่ ${p.id}`;
+    }
+
+    // Start Alert: AI Speech (Priority 1, no emoji)
+    if (typeof aiBrain !== 'undefined') {
+      const mins = Math.round(this.totalSeconds / 60);
+      const startSpeech = `ทุกคนคะ Flash Sale เริ่มแล้ว! ${prodTitle} ราคาพิเศษใน ${mins} นาทีเท่านั้นนะคะ รีบกดสั่งได้เลยค่า!`;
+      aiBrain.enqueue(startSpeech, 1, { type: 'flash_sale', event: 'start', productId: this.productId });
+    }
+
+    if (typeof io !== 'undefined') {
+      io.emit('flash_sale_tick', this.getState());
+    }
+
+    const halfPoint = Math.floor(this.totalSeconds / 2);
+
+    this._interval = setInterval(() => {
+      if (!this.active) {
+        clearInterval(this._interval);
+        this._interval = null;
+        return;
+      }
+
+      this.remainingSeconds--;
+
+      // Half-way alert
+      if (!this.halfAlertTriggered && this.remainingSeconds <= halfPoint && this.remainingSeconds > 60) {
+        this.halfAlertTriggered = true;
+        if (typeof aiBrain !== 'undefined') {
+          aiBrain.enqueue('ทุกคนคะ เวลา Flash Sale เหลือครึ่งทางแล้วนะคะ ใครยังไม่ได้กดรีบเลยค่า!', 1, { type: 'flash_sale', event: 'half' });
+        }
+      }
+
+      // 60-second remaining alert
+      if (!this.oneMinAlertTriggered && this.remainingSeconds <= 60 && this.remainingSeconds > 0 && this.totalSeconds > 60) {
+        this.oneMinAlertTriggered = true;
+        if (typeof aiBrain !== 'undefined') {
+          aiBrain.enqueue('เหลือเวลาอีกแค่ 1 นาทีเท่านั้นนะคะ โปรหมดแล้วหมดเลยจ้า!', 1, { type: 'flash_sale', event: '1min' });
+        }
+      }
+
+      // End alert
+      if (this.remainingSeconds <= 0) {
+        this.stop();
+        if (typeof aiBrain !== 'undefined') {
+          aiBrain.enqueue('หมดเวลา Flash Sale แล้วนะคะ ขอบคุณทุกคนที่ร่วมสนุกกันค่า!', 1, { type: 'flash_sale', event: 'end' });
+        }
+        return;
+      }
+
+      if (typeof io !== 'undefined') {
+        io.emit('flash_sale_tick', this.getState());
+      }
+    }, 1000);
+  }
+
+  stop() {
+    if (this._interval) {
+      clearInterval(this._interval);
+      this._interval = null;
+    }
+    const wasActive = this.active;
+    this.active = false;
+    this.remainingSeconds = 0;
+    if (wasActive && typeof io !== 'undefined') {
+      io.emit('flash_sale_stopped', {});
+    }
+  }
+
+  getState() {
+    return {
+      active: this.active,
+      remainingSeconds: this.remainingSeconds,
+      totalSeconds: this.totalSeconds,
+      productId: this.productId
+    };
+  }
+}
+
 // ----------------------------------------------------
 // 3. Audio Mixer Child Process Bridge
 // ----------------------------------------------------
@@ -662,6 +766,7 @@ const faqManager = new FAQManager();
 const audioMixer = new AudioMixerBridge();
 const aiBrain = new AIBrain(productManager, faqManager, audioMixer);
 const sessionTracker = new SessionTracker();
+const flashSaleManager = new FlashSaleManager();
 
 // Forward mixer speech finished callback to AI Brain queue
 audioMixer.onSpeechFinished = () => {
@@ -1022,6 +1127,7 @@ export {
   faqManager,
   audioMixer,
   aiBrain,
-  sessionTracker
+  sessionTracker,
+  flashSaleManager
 };
 

@@ -186,7 +186,7 @@ console.log('\n[4/4] Testing Core Modules & Logic...');
 
 process.env.PORT = '3098';
 const serverModule = await import('./server.js');
-const { productManager, faqManager, aiBrain, CONFIG, sessionTracker } = serverModule;
+const { productManager, faqManager, aiBrain, CONFIG, sessionTracker, flashSaleManager } = serverModule;
 
 // Test ProductManager
 assert(productManager.getAll().length >= 4, 'ProductManager loaded all initial products');
@@ -279,6 +279,36 @@ test('Session: detectOrderIntent — ไม่กดแล้ว returns false (
   aiBrain.processComment('ทดสอบ', 'ไม่กดแล้ว');
   const after = sessionTracker.getStats().totalOrders;
   assert.strictEqual(after, before); // no increment
+});
+
+// ── Task 4: FlashSaleManager ────────────────────────────────────────────────
+
+test('FlashSaleManager: getState returns inactive by default', () => {
+  assert.strictEqual(flashSaleManager.getState().active, false);
+});
+
+test('FlashSaleManager: start sets active true and correct totalSeconds', () => {
+  flashSaleManager.start(3, 1);
+  const s = flashSaleManager.getState();
+  assert.strictEqual(s.active, true);
+  assert.strictEqual(s.totalSeconds, 180);
+  assert.strictEqual(s.productId, 1);
+  flashSaleManager.stop();
+});
+
+test('FlashSaleManager: stop sets active false', () => {
+  flashSaleManager.start(1, 1);
+  flashSaleManager.stop();
+  assert.strictEqual(flashSaleManager.getState().active, false);
+});
+
+test('FlashSaleManager: concurrent start stops previous timer cleanly', () => {
+  flashSaleManager.start(5, 1);
+  flashSaleManager.start(2, 2); // Replaces active timer
+  const s = flashSaleManager.getState();
+  assert.strictEqual(s.totalSeconds, 120);
+  assert.strictEqual(s.productId, 2);
+  flashSaleManager.stop();
 });
 
 console.log('\n====================================================');
