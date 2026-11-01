@@ -325,6 +325,9 @@ class SessionTracker {
   }
 
   startSession() {
+    if (this.orders.length > 0) {
+      this.saveSession();
+    }
     this.orders = [];
     this.peakViewers = 0;
     this.startTime = Date.now();
@@ -356,10 +359,12 @@ class SessionTracker {
       let maxCount = 0;
       for (const order of this.orders) {
         const pid = order.productId;
-        counts[pid] = (counts[pid] || 0) + 1;
-        if (counts[pid] > maxCount) {
-          maxCount = counts[pid];
-          topProductId = pid;
+        if (pid != null && pid !== undefined) {
+          counts[pid] = (counts[pid] || 0) + 1;
+          if (counts[pid] > maxCount) {
+            maxCount = counts[pid];
+            topProductId = pid;
+          }
         }
       }
     }
@@ -379,7 +384,14 @@ class SessionTracker {
     if (this.orders.length === 0) {
       return header;
     }
-    const rows = this.orders.map(o => `${o.timestamp},${o.user},${o.productId},${o.productTitle},${o.comment}`);
+    const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const rows = this.orders.map(o => [
+      escapeCsv(o.timestamp),
+      escapeCsv(o.user),
+      escapeCsv(o.productId),
+      escapeCsv(o.productTitle),
+      escapeCsv(o.comment)
+    ].join(','));
     return [header, ...rows].join('\n');
   }
 
@@ -636,12 +648,30 @@ class AudioMixerBridge {
   }
 }
 
-const ORDER_KEYWORDS = ['กด','สั่ง','โอน','ซื้อ','จ่าย','จอง','เอา','ขอ','1ชิ้น','2ชิ้น','3ชิ้น'];
-const NEGATION_PREFIXES = ['ไม่','ยัง','ยังไม่'];
+const ORDER_KEYWORDS = [
+  'กด', 'สั่ง', 'ซื้อ', 'เอา', 'จอง', 'โอน',
+  'จ่ายเงิน', 'ชำระเงิน', 'พร้อมโอน',
+  'ขอสั่ง', 'ขอรับ', 'ขอจอง',
+  '1ชิ้น', '2ชิ้น', '3ชิ้น'
+];
+const NEGATION_PREFIXES = ['ไม่', 'ยัง', 'ยังไม่'];
 
 function detectOrderIntent(comment) {
-  const c = String(comment).toLowerCase();
+  const c = String(comment || '').toLowerCase().trim();
+  if (!c) return false;
+
+  // Exclude inquiry phrases (e.g. COD / payment inquiry)
+  if (/(จ่ายปลายทาง|ปลายทาง)/.test(c)) return false;
+
+  // Check for negation anywhere in comment before keyword or phrase
+  if (/(ไม่|ยังไม่|ยกเลิก)\s*(สั่ง|กด|ซื้อ|โอน|เอา|จอง)/.test(c)) return false;
+  if (c.includes('ไม่เอา') || c.includes('ไม่สั่ง') || c.includes('ไม่กด') || 
+      c.includes('ไม่ซื้อ') || c.includes('ไม่โอน') || c.includes('ไม่จอง') ||
+      c.includes('ยกเลิก')) {
+    return false;
+  }
   if (NEGATION_PREFIXES.some(n => c.startsWith(n))) return false;
+
   return ORDER_KEYWORDS.some(k => c.includes(k));
 }
 
@@ -762,8 +792,9 @@ class AIBrain {
           this.faqs.getAll()
         );
         if (aiReply) {
-          this.enqueue(aiReply, 2, { type: 'gemini_faq', user, comment });
-          return aiReply;
+          const cleanSpeech = aiReply.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*#_~`]/g, '').trim();
+          this.enqueue(cleanSpeech, 2, { type: 'gemini_faq', user, comment });
+          return cleanSpeech;
         }
       } catch (err) {
         console.warn('[AIBrain] Gemini call error, falling back to general reply:', err.message);
@@ -940,6 +971,7 @@ function connectTikTok(username) {
 
   tiktokConnection.on('disconnected', () => {
     console.log('[TikTok] Disconnected from live stream.');
+    sessionTracker.saveSession();
     io.emit('tiktok_status', { connected: false, username: currentTikTokUsername });
   });
 }
@@ -1184,6 +1216,15 @@ app.post('/api/ai/generate-script', (req, res) => {
 // Stream Overlay page route
 app.get('/stream-overlay', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'stream-overlay.html'));
+});
+
+// Graceful shutdown on SIGINT
+process.on('SIGINT', () => {
+  console.log('\n[Server] Shutting down gracefully...');
+  if (sessionTracker && sessionTracker.orders.length > 0) {
+    sessionTracker.saveSession();
+  }
+  process.exit(0);
 });
 
 // Start Server
