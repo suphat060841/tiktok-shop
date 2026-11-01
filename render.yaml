@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: tiktok-live-ai
+    runtime: docker
+    plan: free
+    region: singapore
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: SDL_AUDIODRIVER
+        value: dummy
+      - key: TTS_VOICE
+        value: th-TH-PremwadeeNeural
+      - key: GEMINI_API_KEY
+        sync: false

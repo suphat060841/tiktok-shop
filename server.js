@@ -1229,7 +1229,7 @@ process.on('SIGINT', () => {
 });
 
 // Start Server
-server.listen(CONFIG.port, () => {
+server.listen(CONFIG.port, '0.0.0.0', () => {
   console.log(`=======================================================`);
   console.log(`  🚀 TikTok Live AI Automated Selling System v3.0.0`);
   console.log(`  🌐 Dashboard:       http://localhost:${CONFIG.port}`);
