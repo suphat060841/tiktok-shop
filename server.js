@@ -490,6 +490,15 @@ class AudioMixerBridge {
   }
 }
 
+const ORDER_KEYWORDS = ['กด','สั่ง','โอน','ซื้อ','จ่าย','จอง','เอา','ขอ','1ชิ้น','2ชิ้น','3ชิ้น'];
+const NEGATION_PREFIXES = ['ไม่','ยัง','ยังไม่'];
+
+function detectOrderIntent(comment) {
+  const c = String(comment).toLowerCase();
+  if (NEGATION_PREFIXES.some(n => c.startsWith(n))) return false;
+  return ORDER_KEYWORDS.some(k => c.includes(k));
+}
+
 // ----------------------------------------------------
 // 4. AI Brain (Smart Director Logic)
 // ----------------------------------------------------
@@ -572,6 +581,13 @@ class AIBrain {
   }
 
   processComment(user, comment) {
+    // Order intent detection
+    if (detectOrderIntent(comment)) {
+      const pinned = this.products.getPinned();
+      sessionTracker.recordOrder(user, pinned?.id ?? null, pinned?.title ?? '', comment);
+      io.emit('session_order', sessionTracker.getStats());
+    }
+
     // 1. Check FAQ Rules
     const faq = this.faqs.match(comment);
     if (faq) {
@@ -708,6 +724,7 @@ function connectTikTok(username) {
     .then(state => {
       console.log(`[TikTok] Connected to @${username} (Room ID: ${state.roomId})`);
       io.emit('tiktok_status', { connected: true, username, roomId: state.roomId });
+      sessionTracker.startSession();
     })
     .catch(err => {
       console.error(`[TikTok] Connection error:`, err.message);
@@ -752,6 +769,7 @@ function connectTikTok(username) {
   });
 
   tiktokConnection.on('roomUser', data => {
+    sessionTracker.updatePeakViewers(data.viewerCount);
     io.emit('stats_update', { viewerCount: data.viewerCount });
   });
 
@@ -869,6 +887,23 @@ app.delete('/api/faqs/:id', (req, res) => {
   const ok = faqManager.delete(req.params.id);
   io.emit('faqs_updated', faqManager.getAll());
   res.json({ success: ok });
+});
+
+// Session Analytics APIs
+app.get('/api/session/stats', (req, res) => res.json(sessionTracker.getStats()));
+
+app.post('/api/session/start', (req, res) => {
+  sessionTracker.startSession();
+  io.emit('session_started', sessionTracker.getStats());
+  res.json({ success: true });
+});
+
+app.get('/api/session/export-csv', (req, res) => {
+  const csv = sessionTracker.exportCSV();
+  const filename = `session_${new Date().toISOString().slice(0,10)}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send('\uFEFF' + csv); // UTF-8 BOM for Excel Thai
 });
 
 // Speech & Sound APIs

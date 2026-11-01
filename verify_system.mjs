@@ -25,10 +25,18 @@ function assert(condition, message) {
 }
 
 assert.strictEqual = (actual, expected, message) => {
-  nodeAssert.strictEqual(actual, expected, message);
+  if (message !== undefined) {
+    nodeAssert.strictEqual(actual, expected, message);
+  } else {
+    nodeAssert.strictEqual(actual, expected);
+  }
 };
 assert.ok = (value, message) => {
-  nodeAssert.ok(value, message);
+  if (message !== undefined) {
+    nodeAssert.ok(value, message);
+  } else {
+    nodeAssert.ok(value);
+  }
 };
 
 function test(name, fn) {
@@ -254,6 +262,23 @@ test('SessionTracker: updatePeakViewers tracks maximum', () => {
   st.updatePeakViewers(500);
   st.updatePeakViewers(300);
   assert.strictEqual(st.getStats().peakViewers, 500);
+});
+
+// ── Task 2: Session APIs + Order Detection ──────────────────────────────────
+
+test('Session: detectOrderIntent — กดเลยค่า returns true', () => {
+  // detectOrderIntent is module-private; test via processComment side effect
+  const before = sessionTracker.getStats().totalOrders;
+  aiBrain.processComment('ทดสอบ', 'กดเลยค่า');
+  const after = sessionTracker.getStats().totalOrders;
+  assert.strictEqual(after, before + 1);
+});
+
+test('Session: detectOrderIntent — ไม่กดแล้ว returns false (no order recorded)', () => {
+  const before = sessionTracker.getStats().totalOrders;
+  aiBrain.processComment('ทดสอบ', 'ไม่กดแล้ว');
+  const after = sessionTracker.getStats().totalOrders;
+  assert.strictEqual(after, before); // no increment
 });
 
 console.log('\n====================================================');
