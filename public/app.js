@@ -572,6 +572,30 @@ document.getElementById('btn-sim-join')?.addEventListener('click', () => {
   });
 });
 
+// Custom Comment Simulation
+const simCustomSend = document.getElementById('btn-sim-custom-send');
+const simCustomUser = document.getElementById('sim-custom-user');
+const simCustomComment = document.getElementById('sim-custom-comment');
+
+function sendCustomSimulation() {
+  if (!simCustomComment) return;
+  const comment = simCustomComment.value.trim();
+  if (!comment) return;
+  const user = (simCustomUser?.value || 'คุณลูกค้า').trim();
+
+  fetch('/api/simulate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'chat', user, comment })
+  });
+  simCustomComment.value = '';
+}
+
+simCustomSend?.addEventListener('click', sendCustomSimulation);
+simCustomComment?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendCustomSimulation();
+});
+
 btnClearFeed.addEventListener('click', () => {
   liveFeedContainer.innerHTML = '';
 });

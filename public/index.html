@@ -187,13 +187,23 @@
 
       <!-- Tab 1: Live Feed & Simulation -->
       <div class="tab-pane active" id="tab-feed">
-        <div class="simulation-bar">
-          <span class="sim-label">⚡ ปุ่มทดสอบสด:</span>
-          <button class="btn btn-xs btn-sim" id="btn-sim-shipping">ถามเรื่องส่งของ</button>
-          <button class="btn btn-xs btn-sim" id="btn-sim-cod">ถามเก็บเงินปลายทาง</button>
-          <button class="btn btn-xs btn-sim" id="btn-sim-shirt">ถามเสื้อตะกร้า 1</button>
-          <button class="btn btn-xs btn-sim" id="btn-sim-gift">ส่งกุหลาบ x5 🌹</button>
-          <button class="btn btn-xs btn-sim" id="btn-sim-join">มีคนเข้าห้อง 👤</button>
+        <!-- Simulation Control Bar -->
+        <div class="simulation-bar" id="simulation-bar">
+          <div class="sim-presets-row">
+            <span class="sim-label">⚡ ปุ่มลัดทดสอบสด:</span>
+            <button class="btn btn-xs btn-sim" id="btn-sim-shipping">ถามเรื่องส่งของ</button>
+            <button class="btn btn-xs btn-sim" id="btn-sim-cod">ถามเก็บเงินปลายทาง</button>
+            <button class="btn btn-xs btn-sim" id="btn-sim-shirt">ถามเสื้อตะกร้า 1</button>
+            <button class="btn btn-xs btn-sim" id="btn-sim-gift">ส่งกุหลาบ x5 🌹</button>
+            <button class="btn btn-xs btn-sim" id="btn-sim-join">มีคนเข้าห้อง 👤</button>
+          </div>
+          <!-- Custom Comment Simulation Bar -->
+          <div class="sim-custom-row">
+            <span class="sim-label-custom">💬 จำลองคอมเมนต์:</span>
+            <input type="text" id="sim-custom-user" class="sim-input-user" placeholder="ชื่อผู้พิมพ์..." value="คุณลูกค้า">
+            <input type="text" id="sim-custom-comment" class="sim-input-comment" placeholder="พิมพ์ข้อความทดสอบถาม AI (เช่น ร้านเปิดกี่โมง, มีหน้าร้านไหม, สั่งตัวนึง)..." autocomplete="off">
+            <button id="btn-sim-custom-send" class="btn btn-sm btn-accent">ส่งจำลอง 🚀</button>
+          </div>
         </div>
 
         <div class="live-feed-container" id="live-feed-container">

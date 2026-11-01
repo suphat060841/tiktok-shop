@@ -333,6 +333,14 @@ await test('AIBrain.processComment: falls back to general reply when geminiEnabl
   assert.ok(typeof reply === 'string' && reply.length > 0);
 });
 
+// ── UI Verification: Custom Comment Simulation Elements ─────────────────────
+test('UI: index.html contains custom comment simulation bar and send button', () => {
+  const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
+  assert.ok(html.includes('id="sim-custom-user"'), 'User input exists');
+  assert.ok(html.includes('id="sim-custom-comment"'), 'Comment input exists');
+  assert.ok(html.includes('id="btn-sim-custom-send"'), 'Send simulation button exists');
+});
+
 console.log('\n====================================================');
 console.log(`📊 TEST RESULTS: ${passedTests} PASSED, ${failedTests} FAILED`);
 console.log('====================================================\n');
