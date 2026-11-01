@@ -186,7 +186,7 @@ console.log('\n[4/4] Testing Core Modules & Logic...');
 
 process.env.PORT = '3098';
 const serverModule = await import('./server.js');
-const { productManager, faqManager, aiBrain, CONFIG, sessionTracker, flashSaleManager } = serverModule;
+const { productManager, faqManager, aiBrain, CONFIG, sessionTracker, flashSaleManager, GeminiAIBrain, geminiAI } = serverModule;
 
 // Test ProductManager
 assert(productManager.getAll().length >= 4, 'ProductManager loaded all initial products');
@@ -309,6 +309,20 @@ test('FlashSaleManager: concurrent start stops previous timer cleanly', () => {
   assert.strictEqual(s.totalSeconds, 120);
   assert.strictEqual(s.productId, 2);
   flashSaleManager.stop();
+});
+
+// ── Task 8: GeminiAIBrain ───────────────────────────────────────────────────
+
+await test('GeminiAIBrain: ask returns null when apiKey is empty', async () => {
+  const g = new GeminiAIBrain('');
+  const result = await g.ask('ของดีไหม', [], []);
+  assert.strictEqual(result, null);
+});
+
+await test('GeminiAIBrain: ask returns null on API error (bad key)', async () => {
+  const g = new GeminiAIBrain('AIzaBADKEY');
+  const result = await g.ask('ถามอะไร', [], []);
+  assert.strictEqual(result, null);
 });
 
 console.log('\n====================================================');

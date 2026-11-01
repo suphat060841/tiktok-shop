@@ -8,6 +8,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { WebcastPushConnection } from 'tiktok-live-connector/legacy';
+import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
 
@@ -49,7 +50,9 @@ const CONFIG = {
   bgmEnabled: false,
   bgmVolume: 0.25,
   autoSfxOnGift: true,
-  autoSfxOnPin: true
+  autoSfxOnPin: true,
+  geminiEnabled: false,
+  geminiModel: 'gemini-2.0-flash'
 };
 
 // ----------------------------------------------------
@@ -261,6 +264,45 @@ class FAQManager {
       return true;
     }
     return false;
+  }
+}
+
+// ----------------------------------------------------
+// 2.2. Gemini AI Brain
+// ----------------------------------------------------
+class GeminiAIBrain {
+  constructor(apiKey) {
+    this.apiKey = (apiKey || '').trim();
+    this.ai = null;
+    if (this.apiKey) {
+      try {
+        this.ai = new GoogleGenAI({ apiKey: this.apiKey });
+      } catch (err) {
+        console.warn('[GeminiAI] Initialization warning:', err.message);
+      }
+    }
+  }
+
+  async ask(comment, products = [], faqs = []) {
+    if (!this.ai || !this.apiKey) return null;
+    try {
+      const productList = products.map(p => `- ตะกร้าที่ ${p.id}: ${p.title} (ราคา ${p.price} บาท)`).join('\n');
+      const faqList = faqs.map(f => `- ${f.title}: ${f.answer}`).join('\n');
+      const systemPrompt = `คุณคือแม่ค้าสาวไทยใจดีชื่อ "น้องAI" ขายสินค้าในไลฟ์สด TikTok Shop\nสินค้าที่ขายอยู่:\n${productList}\nFAQ ที่รู้:\n${faqList}\nกฎการตอบ: ตอบแบบสั้น กระชับ ภาษาไทย ไม่เกิน 2 ประโยค ห้ามใช้ emoji ห้ามใช้ Markdown`;
+
+      const response = await this.ai.models.generateContent({
+        model: CONFIG.geminiModel || 'gemini-2.0-flash',
+        contents: comment,
+        config: {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: 200
+        }
+      });
+      return response.text?.trim() || null;
+    } catch (e) {
+      console.warn('[GeminiAI] API call failed (safe fallback):', e.message);
+      return null;
+    }
   }
 }
 
@@ -767,6 +809,7 @@ const audioMixer = new AudioMixerBridge();
 const aiBrain = new AIBrain(productManager, faqManager, audioMixer);
 const sessionTracker = new SessionTracker();
 const flashSaleManager = new FlashSaleManager();
+const geminiAI = new GeminiAIBrain(process.env.GEMINI_API_KEY || '');
 
 // Forward mixer speech finished callback to AI Brain queue
 audioMixer.onSpeechFinished = () => {
@@ -1145,6 +1188,8 @@ export {
   audioMixer,
   aiBrain,
   sessionTracker,
-  flashSaleManager
+  flashSaleManager,
+  GeminiAIBrain,
+  geminiAI
 };
 
