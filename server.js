@@ -34,26 +34,53 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/cache', express.static(path.join(__dirname, 'cache')));
 app.use('/sounds', express.static(path.join(__dirname, 'sounds')));
 
-// Configuration
-const CONFIG = {
-  port: parseInt(process.env.PORT) || 3000,
-  voice: process.env.TTS_VOICE || 'th-TH-PremwadeeNeural',
-  persona: 'sweet', // 'sweet', 'hype', 'pro'
-  loopMode: 'sequential', // 'sequential', 'hero_focus', 'shuffle'
-  autoPitch: true,
-  autoPitchIntervalSeconds: 35,
-  respondToComments: true,
-  respondToGifts: true,
-  respondToJoins: true,
-  volume: 1.0,
-  rate: '+0%',
-  bgmEnabled: false,
-  bgmVolume: 0.25,
-  autoSfxOnGift: true,
-  autoSfxOnPin: true,
-  geminiEnabled: false,
-  geminiModel: 'gemini-2.0-flash'
-};
+// Configuration Manager (Persistent to data/config.json)
+const CONFIG_FILE = path.join(__dirname, 'data', 'config.json');
+
+function loadConfig() {
+  const defaults = {
+    port: parseInt(process.env.PORT) || 3000,
+    voice: process.env.TTS_VOICE || 'th-TH-PremwadeeNeural',
+    persona: 'sweet', // 'sweet', 'hype', 'pro'
+    loopMode: 'sequential', // 'sequential', 'hero_focus', 'shuffle'
+    autoPitch: true,
+    autoPitchIntervalSeconds: 35,
+    respondToComments: true,
+    respondToGifts: true,
+    respondToJoins: true,
+    volume: 1.0,
+    rate: '+0%',
+    bgmEnabled: false,
+    bgmVolume: 0.25,
+    autoSfxOnGift: true,
+    autoSfxOnPin: true,
+    geminiEnabled: false,
+    geminiModel: 'gemini-2.0-flash'
+  };
+
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
+      const saved = JSON.parse(raw);
+      return Object.assign(defaults, saved, { port: defaults.port });
+    }
+  } catch (err) {
+    console.warn('[Config] Failed to load data/config.json:', err.message);
+  }
+  return defaults;
+}
+
+function saveConfig(cfg) {
+  try {
+    const dir = path.dirname(CONFIG_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Config] Failed to save data/config.json:', err.message);
+  }
+}
+
+const CONFIG = loadConfig();
 
 // ----------------------------------------------------
 // 1. Product Manager
@@ -286,9 +313,21 @@ class GeminiAIBrain {
   async ask(comment, products = [], faqs = []) {
     if (!this.ai || !this.apiKey) return null;
     try {
+      const isMale = (CONFIG.voice || '').includes('Niwat');
+      const persona = CONFIG.persona || 'sweet';
+      const selfTitle = isMale ? 'พ่อค้าหนุ่ม' : 'แม่ค้าสาว';
+      const polite = isMale ? 'ครับ' : 'ค่ะ';
+
+      let styleDesc = 'บุคลิกอ่อนหวาน สดใส น่ารัก เป็นกันเอง พูดเพราะ (ลงท้ายด้วยนะคะ/ค่า หรือนะครับ/ครับ)';
+      if (persona === 'hype') {
+        styleDesc = 'บุคลิกสายไฮป์ พลังงานสูง ตื่นเต้น เร้าใจ เน้นเร่งปิดยอด กระตุ้นให้รีบกดตะกร้าด่วนๆ ช้าหมดอดโปร';
+      } else if (persona === 'pro') {
+        styleDesc = 'บุคลิกผู้เชี่ยวชาญมืออาชีพ สุภาพ ชัดเจน น่าเชื่อถือ ให้ข้อมูลแม่นยำ ตรงประเด็น มั่นใจในคุณภาพ';
+      }
+
       const productList = products.map(p => `- ตะกร้าที่ ${p.id}: ${p.title} (ราคา ${p.price} บาท)`).join('\n');
       const faqList = faqs.map(f => `- ${f.title}: ${f.answer}`).join('\n');
-      const systemPrompt = `คุณคือแม่ค้าสาวไทยใจดีชื่อ "น้องAI" ขายสินค้าในไลฟ์สด TikTok Shop\nสินค้าที่ขายอยู่:\n${productList}\nFAQ ที่รู้:\n${faqList}\nกฎการตอบ: ตอบแบบสั้น กระชับ ภาษาไทย ไม่เกิน 2 ประโยค ห้ามใช้ emoji ห้ามใช้ Markdown`;
+      const systemPrompt = `คุณคือ${selfTitle}ชื่อ "น้องAI" ขายสินค้าในไลฟ์สด TikTok Shop\nสไตล์การพูด: ${styleDesc}\nคำลงท้าย: ลงท้ายด้วย "${polite}" เสมอ (ห้ามใช้คำลงท้ายของเพศตรงข้าม)\nสินค้าที่ขายอยู่:\n${productList}\nFAQ ที่รู้:\n${faqList}\nกฎการตอบ: ตอบแบบสั้น กระชับ ภาษาไทย ไม่เกิน 2 ประโยค ห้ามใช้ emoji ห้ามใช้ Markdown`;
 
       const response = await this.ai.models.generateContent({
         model: CONFIG.geminiModel || 'gemini-2.0-flash',
@@ -581,7 +620,10 @@ class AudioMixerBridge {
           text: evt.text, 
           audioUrl: evt.audio_url || null,
           fallback: false,
-          playedLocally: !!evt.played_locally
+          playedLocally: !!evt.played_locally,
+          volume: CONFIG.volume,
+          rate: CONFIG.rate,
+          voice: CONFIG.voice
         } 
       });
     } else if (evt.event === 'speech_fallback') {
@@ -593,7 +635,10 @@ class AudioMixerBridge {
           id: evt.id, 
           text: evt.text, 
           audioUrl: null,
-          fallback: true 
+          fallback: true,
+          volume: CONFIG.volume,
+          rate: CONFIG.rate,
+          voice: CONFIG.voice
         } 
       });
       // Safety auto-finish after calculated speaking duration
@@ -627,7 +672,8 @@ class AudioMixerBridge {
       text,
       id: speechId,
       voice: options.voice || CONFIG.voice,
-      rate: options.rate || CONFIG.rate
+      rate: options.rate || CONFIG.rate,
+      volume: options.volume !== undefined ? options.volume : CONFIG.volume
     });
     return speechId;
   }
@@ -689,10 +735,26 @@ class AIBrain {
     this.lastSpeechTime = Date.now();
   }
 
+  getPersonaContext() {
+    const isMale = (CONFIG.voice || '').includes('Niwat');
+    const persona = CONFIG.persona || 'sweet';
+    return {
+      isMale,
+      persona,
+      polite: isMale ? 'ครับ' : 'ค่ะ',
+      politeLong: isMale ? 'ครับผม' : 'ค่า',
+      call: isMale ? 'ครับ' : 'คะ',
+      softEnd: isMale ? 'นะครับ' : 'นะคะ',
+      cheerEnd: isMale ? 'ยินดีต้อนรับครับ' : 'ยินดีต้อนรับค่า',
+      self: isMale ? 'พ่อค้า' : 'แม่ค้า',
+      orderCall: isMale ? 'สั่งได้เลยครับ' : 'สั่งได้เลยค่า'
+    };
+  }
+
   enqueue(text, priority = 3, meta = {}) {
     // Priorities: 1 = urgent/gift, 2 = comment reply, 3 = pitch/welcome
     let finalText = text;
-    if (meta.type === 'chat' || meta.type === 'faq') {
+    if (!meta.raw) {
       finalText = this.formatPersona(text);
     }
     const item = { text: finalText, priority, meta, time: Date.now() };
@@ -722,7 +784,8 @@ class AIBrain {
 
     this.mixer.speak(next.text, {
       voice: CONFIG.voice,
-      rate: CONFIG.rate
+      rate: CONFIG.rate,
+      volume: CONFIG.volume
     });
 
     io.emit('ai_speaking', {
@@ -741,20 +804,50 @@ class AIBrain {
 
   formatPersona(text, persona = CONFIG.persona) {
     if (!text) return text;
+    const isMale = (CONFIG.voice || '').includes('Niwat');
+    let t = String(text).trim();
+
+    // Remove any markdown or emoji characters so TTS doesn't mispronounce them
+    t = t.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*#_~`]/g, '').trim();
+
+    // Gender particle normalization
+    if (isMale) {
+      t = t.replace(/นะคะ/g, 'นะครับ')
+           .replace(/(คะ|ค่ะ|ค่า)/g, 'ครับ')
+           .replace(/แม่ค้า/g, 'พ่อค้า');
+    } else {
+      t = t.replace(/นะครับ/g, 'นะคะ')
+           .replace(/ครับผม/g, 'ค่า')
+           .replace(/ครับ/g, 'ค่ะ')
+           .replace(/พ่อค้า/g, 'แม่ค้า');
+    }
+
     if (persona === 'sweet') {
-      if (!text.endsWith('นะคะ') && !text.endsWith('ค่ะ') && !text.endsWith('ค่า') && !text.endsWith('จ้ะ')) {
-        return text + ' นะคะ ยินดีต้อนรับค่า';
+      if (isMale) {
+        if (!t.endsWith('นะครับ') && !t.endsWith('ครับ')) {
+          t += ' นะครับ ยินดีต้อนรับครับ';
+        }
+      } else {
+        if (!t.endsWith('นะคะ') && !t.endsWith('ค่ะ') && !t.endsWith('ค่า') && !t.endsWith('จ้ะ')) {
+          t += ' นะคะ ยินดีต้อนรับค่า';
+        }
       }
     } else if (persona === 'hype') {
-      if (!text.includes('ด่วน') && !text.includes('รีบ')) {
-        return text + ' ด่วนๆ เลยค่า กดสั่งตอนนี้รับส่วนลดทันที ช้าหมดอดนะจ๊ะ!';
+      const hypeTail = isMale 
+        ? ' ด่วนๆ เลยครับ กดสั่งตอนนี้รับส่วนลดทันที ช้าหมดอดนะจ๊ะ!' 
+        : ' ด่วนๆ เลยค่า กดสั่งตอนนี้รับส่วนลดทันที ช้าหมดอดนะจ๊ะ!';
+      if (!t.includes('ด่วน') && !t.includes('รีบ') && !t.includes('ไฟลุก')) {
+        t += hypeTail;
       }
     } else if (persona === 'pro') {
-      if (!text.endsWith('ครับ') && !text.endsWith('ค่ะ')) {
-        return text + ' ทางร้านรับประกันคุณภาพ มั่นใจได้ร้อยเปอร์เซ็นต์ครับ';
+      const proTail = isMale
+        ? ' ทางร้านรับประกันคุณภาพ มั่นใจได้ร้อยเปอร์เซ็นต์ครับ'
+        : ' ทางร้านรับประกันคุณภาพ มั่นใจได้ร้อยเปอร์เซ็นต์ค่ะ';
+      if (!t.includes('รับประกันคุณภาพ')) {
+        t += proTail;
       }
     }
-    return text;
+    return t;
   }
 
   async processComment(user, comment) {
@@ -768,7 +861,8 @@ class AIBrain {
     // 1. Check FAQ Rules
     const faq = this.faqs.match(comment);
     if (faq) {
-      const resp = `คุณ ${user} คะ ${faq.answer}`;
+      const ctx = this.getPersonaContext();
+      const resp = `คุณ ${user} ${ctx.call} ${faq.answer}`;
       this.enqueue(resp, 2, { type: 'faq', user, comment });
       return resp;
     }
@@ -779,7 +873,15 @@ class AIBrain {
       this.products.pin(prod.id);
       io.emit('pinned_updated', prod);
       if (CONFIG.autoSfxOnPin) this.mixer.playSfx('ding', 0.8);
-      const resp = `สำหรับคุณ ${user} สนใจ ${prod.title} ในตะกร้าที่ ${prod.id} นะคะ วันนี้ราคาพิเศษเพียง ${prod.price} บาทเท่านั้น รีบกดตะกร้าซ้ายล่างได้เลยค่า`;
+      const ctx = this.getPersonaContext();
+      let resp = '';
+      if (ctx.persona === 'hype') {
+        resp = `คุณ ${user} ตะกร้าที่ ${prod.id} ${prod.title} ตัวนี้จัดโปรเด็ดมาก ราคาเพียง ${prod.price} บาท รีบกดสั่งตอนนี้เลย${ctx.softEnd} ช้าหมดอดโปรนี้แน่นอน${ctx.polite}!`;
+      } else if (ctx.persona === 'pro') {
+        resp = `สำหรับคุณ ${user} สินค้าในตะกร้าที่ ${prod.id} ${prod.title} ราคาพิเศษ ${prod.price} บาท สินค้าคุณภาพมาตรฐานรับประกันของแท้ สั่งซื้อได้ทันที${ctx.polite}`;
+      } else {
+        resp = `สำหรับคุณ ${user} สนใจ ${prod.title} ในตะกร้าที่ ${prod.id} ${ctx.softEnd} วันนี้ราคาพิเศษเพียง ${prod.price} บาทเท่านั้น รีบกดตะกร้าซ้ายล่างได้เลย${ctx.politeLong}`;
+      }
       this.enqueue(resp, 2, { type: 'product', user, comment, product: prod });
       return resp;
     }
@@ -803,11 +905,27 @@ class AIBrain {
     }
 
     // 4. General engaging reply
-    const generalReplies = [
-      `สวัสดีคุณ ${user} นะคะ ขอบคุณที่แวะเข้ามาทักทายกันในไลฟ์ค่า สนใจชิ้นไหนจิ้มตะกร้าได้เลยน้า`,
-      `ขอบคุณคอมเมนต์จากคุณ ${user} มากๆ นะคะ สินค้าพร้อมส่งทุกตะกร้าเลยค่า สอบถามเพิ่มเติมได้เลยนะคะ`,
-      `คุณ ${user} แวะมาดูสินค้าคุณภาพ ราคาพิเศษวันนี้ได้เลยค่า สั่งในไลฟ์ส่งฟรีทุกออเดอร์นะคะ`
-    ];
+    const ctx = this.getPersonaContext();
+    let generalReplies = [];
+    if (ctx.persona === 'hype') {
+      generalReplies = [
+        `ยินดีต้อนรับคุณ ${user} เข้ามาถูกจังหวะมาก วันนี้มีโปรลดกระหน่ำในไลฟ์ รีบกดดูตะกร้าด่วนๆ เลย${ctx.softEnd}!`,
+        `สวัสดีคุณ ${user} ดีลเด็ดวันนี้ลดแรงสุดๆ รีบคว้าไว้ก่อนหมดโปรเลย${ctx.softEnd}!`,
+        `คุณ ${user} สินค้าในไลฟ์วันนี้ใกล้จะหมดแล้วนะ${ctx.call} ใครเล็งชิ้นไหนอยู่รีบกดด่วนๆ เลย${ctx.polite}!`
+      ];
+    } else if (ctx.persona === 'pro') {
+      generalReplies = [
+        `สวัสดี${ctx.polite} คุณ ${user} ทางร้านยินดีให้บริการและพร้อมให้คำแนะนำในทุกรายการสินค้า${ctx.polite}`,
+        `ขอขอบคุณความคิดเห็นจากคุณ ${user} เป็นอย่างยิ่ง${ctx.polite} สินค้าทุกชิ้นมีการรับประกันคุณภาพและพร้อมจัดส่ง${ctx.polite}`,
+        `ยินดีต้อนรับคุณ ${user} เข้าสู่การถ่ายทอดสด${ctx.polite} หากต้องการข้อมูลสินค้าส่วนใด สอบถามได้ตลอดเวลา${ctx.polite}`
+      ];
+    } else {
+      generalReplies = [
+        `สวัสดีคุณ ${user} ${ctx.softEnd} ขอบคุณที่แวะเข้ามาทักทายกันในไลฟ์${ctx.politeLong} สนใจชิ้นไหนจิ้มตะกร้าได้เลยน้า`,
+        `ขอบคุณคอมเมนต์จากคุณ ${user} มากๆ เลย${ctx.softEnd} สินค้าพร้อมส่งทุกตะกร้าเลย${ctx.politeLong} สอบถามเพิ่มเติมได้เลย${ctx.softEnd}`,
+        `คุณ ${user} แวะมาดูสินค้าคุณภาพ ราคาพิเศษวันนี้ได้เลย${ctx.politeLong} สั่งในไลฟ์ส่งฟรีทุกออเดอร์${ctx.softEnd}`
+      ];
+    }
     const pick = generalReplies[Math.floor(Math.random() * generalReplies.length)];
     this.enqueue(pick, 3, { type: 'chat', user, comment });
     return pick;
@@ -817,16 +935,39 @@ class AIBrain {
     if (CONFIG.autoSfxOnGift) {
       this.mixer.playSfx('cheer', 0.9);
     }
-    const thankMsg = `ขอบคุณคุณ ${user} มากๆ เลยนะคะ สำหรับ ${giftName} ${repeatCount > 1 ? `จำนวน ${repeatCount} ชิ้น` : ''} ขอให้เฮงๆ รวยๆ สุขภาพแข็งแรงนะคะ ขอบคุณค่า!`;
+    const ctx = this.getPersonaContext();
+    let thankMsg = '';
+    const countText = repeatCount > 1 ? `จำนวน ${repeatCount} ชิ้น ` : '';
+    if (ctx.persona === 'hype') {
+      thankMsg = `โอ้โห ปังมาก! ขอบคุณคุณ ${user} สำหรับ ${giftName} ${countText}มากๆ เลย${ctx.softEnd}! ขอให้ยอดเฮงยอดปัง รวยๆ ปังๆ ไปเลย${ctx.softEnd}!`;
+    } else if (ctx.persona === 'pro') {
+      thankMsg = `ทางร้านขอขอบพระคุณคุณ ${user} เป็นอย่างยิ่ง สำหรับ ${giftName} ${countText}ขอขอบพระคุณสำหรับกำลังใจและความอนุเคราะห์${ctx.polite}`;
+    } else {
+      thankMsg = `ขอบคุณคุณ ${user} มากๆ เลย${ctx.softEnd} สำหรับ ${giftName} ${countText}ขอให้เฮงๆ รวยๆ สุขภาพแข็งแรง${ctx.softEnd} ขอบคุณ${ctx.politeLong}!`;
+    }
     this.enqueue(thankMsg, 1, { type: 'gift', user, giftName, repeatCount });
   }
 
   processJoin(user) {
     if (!CONFIG.respondToJoins) return;
-    const welcomes = [
-      `สวัสดีค่าคุณ ${user} ยินดีต้อนรับเข้าสู่ไลฟ์สดนะคะ เข้ามาแล้วอย่าลืมกดติดตามและกดดูตะกร้าได้เลยค่า`,
-      `ยินดีต้อนรับคุณ ${user} นะคะ วันนี้มีโปรพิเศษส่งฟรีในไลฟ์ จิ้มดูตะกร้าซ้ายล่างได้เลยน้า`
-    ];
+    const ctx = this.getPersonaContext();
+    let welcomes = [];
+    if (ctx.persona === 'hype') {
+      welcomes = [
+        `สวัสดีคุณ ${user} เข้ามาได้จังหวะดีลเด็ดพอดี รีบส่องตะกร้าซ้ายล่างด่วนๆ เลย${ctx.softEnd}!`,
+        `ยินดีต้อนรับคุณ ${user} ไลฟ์นี้ลดโหดมาก ชิ้นไหนถูกใจรีบจิ้มตะกร้าด่วนๆ เลย${ctx.polite}!`
+      ];
+    } else if (ctx.persona === 'pro') {
+      welcomes = [
+        `สวัสดี${ctx.polite}คุณ ${user} ยินดีต้อนรับเข้าสู่การถ่ายทอดสดครับ สอบถามรายละเอียดสินค้าได้ทันที${ctx.polite}`,
+        `ยินดีต้อนรับคุณ ${user} เข้าสู่ร้านค้าอย่างเป็นทางการ วันนี้มีข้อเสนอพิเศษพร้อมการรับประกันคุณภาพ${ctx.polite}`
+      ];
+    } else {
+      welcomes = [
+        `สวัสดี${ctx.politeLong}คุณ ${user} ยินดีต้อนรับเข้าสู่ไลฟ์สด${ctx.softEnd} เข้ามาแล้วอย่าลืมกดติดตามและกดดูตะกร้าได้เลย${ctx.politeLong}`,
+        `ยินดีต้อนรับคุณ ${user} ${ctx.softEnd} วันนี้มีโปรพิเศษส่งฟรีในไลฟ์ จิ้มดูตะกร้าซ้ายล่างได้เลยน้า`
+      ];
+    }
     const w = welcomes[Math.floor(Math.random() * welcomes.length)];
     this.enqueue(w, 3, { type: 'join', user });
   }
@@ -840,12 +981,28 @@ class AIBrain {
     io.emit('pinned_updated', prod);
     if (CONFIG.autoSfxOnPin) this.mixer.playSfx('ding', 0.6);
 
-    const pitch = prod.pitchScript || `ตอนนี้กำลังปักหมุดตะกร้าที่ ${prod.id} ${prod.title} ราคาพิเศษ ${prod.price} บาทนะคะ สินค้ามีจำนวนจำกัด กดสั่งได้เลยค่า`;
+    const ctx = this.getPersonaContext();
+    let pitch = prod.pitchScript;
+    if (!pitch) {
+      if (ctx.persona === 'hype') {
+        pitch = `ด่วนที่สุดตอนนี้! ปักหมุดตะกร้าที่ ${prod.id} ${prod.title} ราคาพิเศษหลุดโลกเพียง ${prod.price} บาท! รีบจิ้มตะกร้าซ้ายล่างด่วนๆ ช้าหมดแน่นอน${ctx.polite}!`;
+      } else if (ctx.persona === 'pro') {
+        pitch = `ขอแนะนำสินค้าในตะกร้าที่ ${prod.id} ${prod.title} ราคาพิเศษ ${prod.price} บาท สินค้าคุณภาพมาตรฐาน รับประกันของแท้ สั่งซื้อได้ทันที${ctx.polite}`;
+      } else {
+        pitch = `ตอนนี้กำลังปักหมุดตะกร้าที่ ${prod.id} ${prod.title} ราคาพิเศษ ${prod.price} บาท${ctx.softEnd} สินค้ามีจำนวนจำกัด กดสั่งได้เลย${ctx.politeLong}`;
+      }
+    }
     this.enqueue(pitch, 3, { type: 'pitch', product: prod });
   }
 
   generateUrgencySpeech(prod) {
-    return `ทุกคนคะ ตะกร้าที่ ${prod.id} ${prod.title} ตอนนี้เหลือสต็อกเพียง ${prod.stock} ชิ้นสุดท้ายแล้วนะคะ ใครที่เล็งไว้อยู่ รีบกดสั่งและชำระเงินด่วนเลยค่า หมดแล้วหมดเลยนะคะ!`;
+    const ctx = this.getPersonaContext();
+    if (ctx.persona === 'hype') {
+      return `ทุกคนด่วนๆ เลย${ctx.call}! ตะกร้าที่ ${prod.id} ${prod.title} สต็อกแตกแล้ว เหลือแค่ ${prod.stock} ชิ้นสุดท้าย! ใครไม่ทันรอบนี้คือพลาดมาก รีบกดจ่ายเงินด่วนที่สุด${ctx.polite}!`;
+    } else if (ctx.persona === 'pro') {
+      return `ขอแจ้งเตือนสต็อกสินค้าตะกร้าที่ ${prod.id} ${prod.title} ขณะนี้เหลือเพียง ${prod.stock} ชิ้นสุดท้ายในระบบ ขอแนะนำให้ท่านทำรายการสั่งซื้อและชำระเงินเพื่อสงวนสิทธิ์${ctx.polite}`;
+    }
+    return `ทุกคน${ctx.call} ตะกร้าที่ ${prod.id} ${prod.title} ตอนนี้เหลือสต็อกเพียง ${prod.stock} ชิ้นสุดท้ายแล้ว${ctx.softEnd} ใครที่เล็งไว้อยู่ รีบกดสั่งและชำระเงินได้เลย${ctx.politeLong}`;
   }
 }
 
@@ -994,8 +1151,32 @@ app.get('/api/status', (req, res) => {
 
 app.post('/api/config', (req, res) => {
   Object.assign(CONFIG, req.body);
+  saveConfig(CONFIG);
   io.emit('config_updated', CONFIG);
   res.json({ success: true, config: CONFIG });
+});
+
+// Voice & Persona Live Audio Preview
+app.post('/api/voice/preview', (req, res) => {
+  const isMale = (CONFIG.voice || '').includes('Niwat');
+  const persona = CONFIG.persona || 'sweet';
+  let sample = '';
+  if (persona === 'sweet') {
+    sample = isMale
+      ? 'สวัสดีครับ ยินดีต้อนรับเข้าสู่ไลฟ์สดนะครับ สินค้าพร้อมส่งทุกตะกร้า แวะชมก่อนได้เลยครับ'
+      : 'สวัสดีค่า ยินดีต้อนรับเข้าสู่ไลฟ์สดนะคะ สินค้าพร้อมส่งทุกตะกร้า แวะชมก่อนได้เลยค่า';
+  } else if (persona === 'hype') {
+    sample = isMale
+      ? 'ด่วนที่สุดในไลฟ์นี้ครับทุกคน! โปรแรงแซงทุกดีล กดตะกร้าด่วนๆ เลยนะครับ ช้าหมดอดแน่นอนครับ!'
+      : 'ด่วนที่สุดในไลฟ์นี้ค่าทุกคน! โปรแรงแซงทุกดีล กดตะกร้าด่วนๆ เลยนะคะ ช้าหมดอดแน่นอนค่า!';
+  } else {
+    // pro
+    sample = isMale
+      ? 'สวัสดีครับ ยินดีต้อนรับทุกท่าน สินค้าของทางร้านรับประกันคุณภาพแท้ร้อยเปอร์เซ็นต์ สั่งซื้อได้ทันทีครับ'
+      : 'สวัสดีค่ะ ยินดีต้อนรับทุกท่าน สินค้าของทางร้านรับประกันคุณภาพแท้ร้อยเปอร์เซ็นต์ สั่งซื้อได้ทันทีค่ะ';
+  }
+  aiBrain.enqueue(sample, 1, { type: 'preview', raw: true });
+  res.json({ success: true, previewText: sample, config: CONFIG });
 });
 
 // TikTok Connect/Disconnect

@@ -1,0 +1,18 @@
+{
+  "voice": "th-TH-PremwadeeNeural",
+  "persona": "sweet",
+  "loopMode": "sequential",
+  "autoPitch": true,
+  "autoPitchIntervalSeconds": 35,
+  "respondToComments": true,
+  "respondToGifts": true,
+  "respondToJoins": true,
+  "volume": 1.0,
+  "rate": "+0%",
+  "bgmEnabled": false,
+  "bgmVolume": 0.25,
+  "autoSfxOnGift": true,
+  "autoSfxOnPin": true,
+  "geminiEnabled": false,
+  "geminiModel": "gemini-2.0-flash"
+}

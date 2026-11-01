@@ -341,6 +341,35 @@ test('UI: index.html contains custom comment simulation bar and send button', ()
   assert.ok(html.includes('id="btn-sim-custom-send"'), 'Send simulation button exists');
 });
 
+// ── Persona & Voice System Verification ─────────────────────────────────────
+test('Persona & Voice: Niwat voice adapts text endings to male particles (ครับ / นะครับ)', () => {
+  const origVoice = CONFIG.voice;
+  CONFIG.voice = 'th-TH-NiwatNeural';
+  const maleSweet = aiBrain.formatPersona('สวัสดีค่า ยินดีต้อนรับนะคะ', 'sweet');
+  assert.ok(maleSweet.includes('ครับ'), 'Niwat voice uses male particle ครับ');
+  assert.ok(!maleSweet.includes('นะคะ'), 'Niwat voice does not use female particle นะคะ');
+  CONFIG.voice = origVoice;
+});
+
+test('Persona & Voice: Hype persona injects urgency and call to action', () => {
+  const hypeRes = aiBrain.formatPersona('สำหรับสินค้านี้', 'hype');
+  assert.ok(hypeRes.includes('ด่วน') || hypeRes.includes('รีบ'), 'Hype persona includes urgency keyword');
+});
+
+test('UI: index.html contains voice preview button and speed options', () => {
+  const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
+  assert.ok(html.includes('id="btn-preview-voice"'), 'Voice preview button exists');
+  assert.ok(html.includes('value="-20%"'), 'Speed -20% exists');
+  assert.ok(html.includes('value="+30%"'), 'Speed +30% exists');
+});
+
+test('Config Persistence: data/config.json exists and is valid JSON', () => {
+  const cfgPath = path.join(__dirname, 'data/config.json');
+  assert.ok(fs.existsSync(cfgPath), 'data/config.json exists');
+  const parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+  assert.ok(parsed.voice && parsed.persona, 'config.json has voice and persona');
+});
+
 console.log('\n====================================================');
 console.log(`📊 TEST RESULTS: ${passedTests} PASSED, ${failedTests} FAILED`);
 console.log('====================================================\n');

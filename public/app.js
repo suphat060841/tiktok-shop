@@ -163,7 +163,7 @@ function playDashboardSpeech(data) {
   // do not duplicate playback in the dashboard browser tab.
   if (data.playedLocally) return;
 
-  const currentVol = parseFloat(rangeVolume.value) || 1.0;
+  const currentVol = data.volume !== undefined ? data.volume : (parseFloat(rangeVolume.value) || 1.0);
 
   if (data.audioUrl && !data.fallback) {
     try {
@@ -200,7 +200,8 @@ function speakDashboardWebSpeech(text) {
     const utter = new SpeechSynthesisUtterance(text);
     utter.voice = thVoice;
     utter.lang = 'th-TH';
-    utter.rate = parseFloat(selectSpeed.value) || 1.0;
+    const rateMap = { '-20%': 0.8, '-10%': 0.9, '+0%': 1.0, '+10%': 1.1, '+15%': 1.25, '+20%': 1.3, '+30%': 1.45 };
+    utter.rate = rateMap[selectSpeed.value] || 1.0;
     window.speechSynthesis.speak(utter);
   } catch (e) {
     console.error('Web Speech error:', e);
@@ -426,6 +427,32 @@ if (toggleGemini) {
     updateConfig({ geminiEnabled: toggleGemini.checked });
   });
 }
+
+// Preview Voice Button
+const btnPreviewVoice = document.getElementById('btn-preview-voice');
+if (btnPreviewVoice) {
+  btnPreviewVoice.addEventListener('click', async () => {
+    const originalText = btnPreviewVoice.textContent;
+    btnPreviewVoice.textContent = '🔊 กำลังพูดตัวอย่าง...';
+    try {
+      await fetch('/api/voice/preview', { method: 'POST' });
+    } catch (e) {
+      console.error('[VoicePreview] Error:', e);
+    } finally {
+      setTimeout(() => {
+        btnPreviewVoice.textContent = originalText;
+      }, 3000);
+    }
+  });
+}
+
+// Config updated sync from server
+socket.on('config_updated', cfg => {
+  if (cfg) {
+    appConfig = cfg;
+    applyConfigUI(cfg);
+  }
+});
 
 // Sound FX Buttons
 document.querySelectorAll('.btn-sfx').forEach(btn => {

@@ -152,6 +152,8 @@ async def handle_speak(data):
         try:
             sound = pygame.mixer.Sound(filepath)
             SPEECH_CHANNEL.stop()
+            vol = float(data.get('volume', 1.0))
+            SPEECH_CHANNEL.set_volume(max(0.0, min(1.0, vol)))
             is_speech_active = True
             SPEECH_CHANNEL.play(sound)
             played_locally = True

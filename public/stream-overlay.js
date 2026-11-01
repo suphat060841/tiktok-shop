@@ -226,7 +226,7 @@ function speakOverlayAudio(data) {
         overlayAudio = null;
       }
       overlayAudio = new Audio(data.audioUrl);
-      overlayAudio.volume = 1.0;
+      overlayAudio.volume = data.volume !== undefined ? Math.min(1.0, Math.max(0.0, data.volume)) : 1.0;
       overlayAudio.play().catch(err => {
         console.warn('Overlay audio playback blocked or failed, fallback to Web Speech:', err);
         speakWebSpeech(data.text);
