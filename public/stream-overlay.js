@@ -212,6 +212,9 @@ function speakOverlayAudio(data) {
   if (!data || !data.text) return;
   // If muted in iframe preview, do not produce sound
   if (urlParams.get('muted') === '1') return;
+  // If Python audio mixer already played the sound locally on the host machine,
+  // do not duplicate playback unless specifically requested via ?audio=1
+  if (data.playedLocally && urlParams.get('audio') !== '1') return;
 
   // 1. If audio file URL is available, play high-quality neural voice
   if (data.audioUrl && !data.fallback) {
@@ -239,13 +242,17 @@ function speakOverlayAudio(data) {
 function speakWebSpeech(text) {
   if (!('speechSynthesis' in window) || !text) return;
   try {
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'th-TH';
-    utter.rate = 1.05;
     const voices = window.speechSynthesis.getVoices();
     const thVoice = voices.find(v => v.lang.includes('th') || v.lang.includes('TH'));
-    if (thVoice) utter.voice = thVoice;
+    if (!thVoice) {
+      console.warn('[WebSpeech] No Thai voice installed in browser/OS. Suppressing speech to prevent English voice intrusion.');
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.voice = thVoice;
+    utter.lang = 'th-TH';
+    utter.rate = 1.05;
     window.speechSynthesis.speak(utter);
   } catch (e) {
     console.error('Web Speech error:', e);

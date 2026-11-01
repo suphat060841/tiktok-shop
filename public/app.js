@@ -154,6 +154,10 @@ let dashboardSpeechAudio = null;
 
 function playDashboardSpeech(data) {
   if (!data || !data.text) return;
+  // If Python audio mixer already played the sound locally on the host machine,
+  // do not duplicate playback in the dashboard browser tab.
+  if (data.playedLocally) return;
+
   const currentVol = parseFloat(rangeVolume.value) || 1.0;
 
   if (data.audioUrl && !data.fallback) {
@@ -181,13 +185,17 @@ function playDashboardSpeech(data) {
 function speakDashboardWebSpeech(text) {
   if (!('speechSynthesis' in window) || !text) return;
   try {
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'th-TH';
-    utter.rate = parseFloat(selectSpeed.value) || 1.0;
     const voices = window.speechSynthesis.getVoices();
     const thVoice = voices.find(v => v.lang.includes('th') || v.lang.includes('TH'));
-    if (thVoice) utter.voice = thVoice;
+    if (!thVoice) {
+      console.warn('[WebSpeech] No Thai voice installed in browser/OS. Suppressing speech to prevent English voice intrusion.');
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.voice = thVoice;
+    utter.lang = 'th-TH';
+    utter.rate = parseFloat(selectSpeed.value) || 1.0;
     window.speechSynthesis.speak(utter);
   } catch (e) {
     console.error('Web Speech error:', e);

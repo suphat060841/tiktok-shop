@@ -580,7 +580,8 @@ class AudioMixerBridge {
           id: evt.id, 
           text: evt.text, 
           audioUrl: evt.audio_url || null,
-          fallback: false 
+          fallback: false,
+          playedLocally: !!evt.played_locally
         } 
       });
     } else if (evt.event === 'speech_fallback') {

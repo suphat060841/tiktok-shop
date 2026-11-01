@@ -154,7 +154,7 @@ async def handle_speak(data):
             is_speech_active = True
             SPEECH_CHANNEL.play(sound)
             played_locally = True
-            send_event('speech_started', id=speech_id, text=text, audio_url=audio_url)
+            send_event('speech_started', id=speech_id, text=text, audio_url=audio_url, played_locally=True)
 
             while SPEECH_CHANNEL.get_busy():
                 await asyncio.sleep(0.04)
@@ -168,7 +168,7 @@ async def handle_speak(data):
     if not played_locally:
         if has_valid_cache:
             # File exists, stream to browser
-            send_event('speech_started', id=speech_id, text=text, audio_url=audio_url)
+            send_event('speech_started', id=speech_id, text=text, audio_url=audio_url, played_locally=False)
             duration = max(2.0, min(15.0, len(text) * 0.12))
             await asyncio.sleep(duration)
             send_event('speech_finished', id=speech_id)
