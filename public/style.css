@@ -966,3 +966,38 @@ body.dashboard-body {
   align-items: center;
 }
 
+/* Session Analytics */
+.analytics-grid {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+}
+.analytics-stat {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-align: center;
+}
+.stat-num {
+  display: block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #00f2fe;
+}
+.stat-label {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+.btn-outline {
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.btn-outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+

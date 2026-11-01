@@ -233,6 +233,9 @@ socket.on('stats_update', stats => {
   }
 });
 
+socket.on('session_order', (stats) => updateAnalyticsUI(stats));
+socket.on('session_started', (stats) => updateAnalyticsUI(stats));
+
 socket.on('faqs_updated', faqs => {
   faqsList = faqs;
   renderFaqsList();
@@ -706,4 +709,31 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// ==========================================
+// Session Analytics (Task 3)
+// ==========================================
+function updateAnalyticsUI(stats) {
+  if (!stats) return;
+  const ordersEl = document.getElementById('stat-orders');
+  const peakEl = document.getElementById('stat-peak');
+  const topProductEl = document.getElementById('stat-top-product');
+  if (ordersEl) ordersEl.textContent = stats.totalOrders || 0;
+  if (peakEl) peakEl.textContent = stats.peakViewers || 0;
+  if (topProductEl) topProductEl.textContent = stats.topProductId ? `#${stats.topProductId}` : '-';
+}
+
+const btnExportCsv = document.getElementById('btn-export-csv');
+if (btnExportCsv) {
+  btnExportCsv.addEventListener('click', () => {
+    window.open('/api/session/export-csv', '_blank');
+  });
+}
+
+// Fetch initial session stats
+fetch('/api/session/stats')
+  .then(res => res.json())
+  .then(stats => updateAnalyticsUI(stats))
+  .catch(err => console.error('[Analytics] Failed to fetch stats:', err));
+
 
