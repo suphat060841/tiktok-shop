@@ -217,10 +217,10 @@ const proText = aiBrain.formatPersona('สินค้าราคาพิเ�
 assert(proText.includes('รับประกันคุณภาพ'), `Persona 'pro' adds professional assurance: "${proText}"`);
 
 // Test Comment Processing
-const replyFaq = aiBrain.processComment('สมชาย', 'ส่งของวันไหนคะ');
+const replyFaq = await aiBrain.processComment('สมชาย', 'ส่งของวันไหนคะ');
 assert(replyFaq && replyFaq.includes('สมชาย') && replyFaq.includes('จัดส่งสินค้าทุกวัน'), `AI Brain replied to user with FAQ answer`);
 
-const replyProd = aiBrain.processComment('น้องมุก', 'สนใจเสื้อยืดโอเวอร์ไซส์ค่ะ');
+const replyProd = await aiBrain.processComment('น้องมุก', 'สนใจเสื้อยืดโอเวอร์ไซส์ค่ะ');
 assert(replyProd && replyProd.includes('น้องมุก') && replyProd.includes('เสื้อยืด'), `AI Brain identified product interest and replied about Basket #1`);
 
 // ── Task 1: SessionTracker ──────────────────────────────────────────────────
@@ -323,6 +323,14 @@ await test('GeminiAIBrain: ask returns null on API error (bad key)', async () =>
   const g = new GeminiAIBrain('AIzaBADKEY');
   const result = await g.ask('ถามอะไร', [], []);
   assert.strictEqual(result, null);
+});
+
+// ── Task 9: Wire Gemini into AIBrain ────────────────────────────────────────
+
+await test('AIBrain.processComment: falls back to general reply when geminiEnabled false', async () => {
+  CONFIG.geminiEnabled = false;
+  const reply = await aiBrain.processComment('ทดสอบ', 'คำถามแปลกๆ ที่ไม่มีใน FAQ เลย abc123');
+  assert.ok(typeof reply === 'string' && reply.length > 0);
 });
 
 console.log('\n====================================================');

@@ -27,6 +27,7 @@ const toggleWelcome = document.getElementById('toggle-welcome');
 const toggleComments = document.getElementById('toggle-comments');
 const toggleGifts = document.getElementById('toggle-gifts');
 const toggleAutoPitch = document.getElementById('toggle-auto-pitch');
+const toggleGemini = document.getElementById('toggle-gemini');
 
 const btnToggleBgm = document.getElementById('btn-toggle-bgm');
 const rangeBgmVolume = document.getElementById('range-bgm-volume');
@@ -141,7 +142,9 @@ socket.on('member_join', join => {
 });
 
 socket.on('ai_speaking', speech => {
-  appendFeedItem('ai-speech', 'แม่ค้า AI (พูดสด)', speech.text, speech.timestamp);
+  const isGemini = speech.meta?.type === 'gemini_faq';
+  const label = isGemini ? '🤖 แม่ค้า AI (Gemini ตอบ)' : 'แม่ค้า AI (พูดสด)';
+  appendFeedItem(isGemini ? 'ai-speech gemini-reply' : 'ai-speech', label, speech.text, speech.timestamp);
 });
 
 // ==========================================
@@ -256,6 +259,9 @@ function applyConfigUI(cfg) {
   toggleComments.checked = !!cfg.respondToComments;
   toggleGifts.checked = !!cfg.respondToGifts;
   toggleAutoPitch.checked = !!cfg.autoPitch;
+  if (toggleGemini && cfg.geminiEnabled !== undefined) {
+    toggleGemini.checked = !!cfg.geminiEnabled;
+  }
 
   if (cfg.bgmEnabled) {
     btnToggleBgm.className = 'btn btn-primary';
@@ -402,6 +408,11 @@ toggleWelcome.addEventListener('change', () => updateConfig({ respondToJoins: to
 toggleComments.addEventListener('change', () => updateConfig({ respondToComments: toggleComments.checked }));
 toggleGifts.addEventListener('change', () => updateConfig({ respondToGifts: toggleGifts.checked }));
 toggleAutoPitch.addEventListener('change', () => updateConfig({ autoPitch: toggleAutoPitch.checked }));
+if (toggleGemini) {
+  toggleGemini.addEventListener('change', () => {
+    updateConfig({ geminiEnabled: toggleGemini.checked });
+  });
+}
 
 // Sound FX Buttons
 document.querySelectorAll('.btn-sfx').forEach(btn => {

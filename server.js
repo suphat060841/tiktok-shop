@@ -726,8 +726,8 @@ class AIBrain {
     return text;
   }
 
-  processComment(user, comment) {
-    // Order intent detection
+  async processComment(user, comment) {
+    // Order intent detection (DO NOT REMOVE)
     if (detectOrderIntent(comment)) {
       const pinned = this.products.getPinned();
       sessionTracker.recordOrder(user, pinned?.id ?? null, pinned?.title ?? '', comment);
@@ -753,7 +753,24 @@ class AIBrain {
       return resp;
     }
 
-    // 3. General engaging reply
+    // 3. Gemini AI Smart FAQ Fallback (when enabled)
+    if (CONFIG.geminiEnabled && typeof geminiAI !== 'undefined' && geminiAI) {
+      try {
+        const aiReply = await geminiAI.ask(
+          `ลูกค้าชื่อ ${user} ถามว่า: ${comment}`,
+          this.products.getAll(),
+          this.faqs.getAll()
+        );
+        if (aiReply) {
+          this.enqueue(aiReply, 2, { type: 'gemini_faq', user, comment });
+          return aiReply;
+        }
+      } catch (err) {
+        console.warn('[AIBrain] Gemini call error, falling back to general reply:', err.message);
+      }
+    }
+
+    // 4. General engaging reply
     const generalReplies = [
       `สวัสดีคุณ ${user} นะคะ ขอบคุณที่แวะเข้ามาทักทายกันในไลฟ์ค่า สนใจชิ้นไหนจิ้มตะกร้าได้เลยน้า`,
       `ขอบคุณคอมเมนต์จากคุณ ${user} มากๆ นะคะ สินค้าพร้อมส่งทุกตะกร้าเลยค่า สอบถามเพิ่มเติมได้เลยนะคะ`,
@@ -879,7 +896,7 @@ function connectTikTok(username) {
       io.emit('tiktok_status', { connected: false, error: err.message, username });
     });
 
-  tiktokConnection.on('chat', data => {
+  tiktokConnection.on('chat', async data => {
     const chatMsg = {
       user: data.nickname || data.uniqueId,
       comment: data.comment,
@@ -887,7 +904,7 @@ function connectTikTok(username) {
     };
     io.emit('chat_message', chatMsg);
     if (CONFIG.respondToComments) {
-      aiBrain.processComment(chatMsg.user, chatMsg.comment);
+      await aiBrain.processComment(chatMsg.user, chatMsg.comment);
     }
   });
 
@@ -1109,7 +1126,7 @@ app.post('/api/bgm/volume', (req, res) => {
 });
 
 // Simulation API (Test without needing live TikTok session)
-app.post('/api/simulate', (req, res) => {
+app.post('/api/simulate', async (req, res) => {
   const { type, user, comment, giftName, repeatCount } = req.body;
   if (type === 'chat') {
     const chatMsg = {
@@ -1119,7 +1136,7 @@ app.post('/api/simulate', (req, res) => {
       simulated: true
     };
     io.emit('chat_message', chatMsg);
-    const resp = aiBrain.processComment(chatMsg.user, chatMsg.comment);
+    const resp = await aiBrain.processComment(chatMsg.user, chatMsg.comment);
     return res.json({ success: true, type, message: chatMsg, response: resp });
   } else if (type === 'gift') {
     const giftMsg = {
