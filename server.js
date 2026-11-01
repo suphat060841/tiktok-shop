@@ -1011,6 +1011,23 @@ app.get('/api/session/export-csv', (req, res) => {
   res.send('\uFEFF' + csv); // UTF-8 BOM for Excel Thai
 });
 
+// Flash Sale APIs
+app.post('/api/flash-sale/start', (req, res) => {
+  const mins = parseInt(req.body?.durationMinutes) || 5;
+  const pid = req.body?.productId !== undefined ? parseInt(req.body.productId) : (productManager.getPinned()?.id || 1);
+  flashSaleManager.start(mins, pid);
+  res.json({ success: true, state: flashSaleManager.getState() });
+});
+
+app.post('/api/flash-sale/stop', (req, res) => {
+  flashSaleManager.stop();
+  res.json({ success: true, state: flashSaleManager.getState() });
+});
+
+app.get('/api/flash-sale/state', (req, res) => {
+  res.json(flashSaleManager.getState());
+});
+
 // Speech & Sound APIs
 app.post('/api/speak', (req, res) => {
   const { text, priority } = req.body;
