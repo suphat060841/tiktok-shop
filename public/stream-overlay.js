@@ -178,6 +178,25 @@ socket.on('init_state', data => {
   if (data.pinnedProduct) {
     updatePinnedCard(data.pinnedProduct);
   }
+  if (data.flashSale) {
+    updateFlashSaleBanner(data.flashSale);
+  }
+  if (data.config) {
+    updateOverlayConfig(data.config);
+  }
+});
+
+function updateOverlayConfig(cfg) {
+  if (!cfg) return;
+  const isMale = (cfg.voice || '').includes('Niwat');
+  const speakerName = document.querySelector('.speaker-name');
+  if (speakerName) {
+    speakerName.textContent = isMale ? 'พ่อค้า AI:' : 'แม่ค้า AI:';
+  }
+}
+
+socket.on('config_updated', cfg => {
+  updateOverlayConfig(cfg);
 });
 
 socket.on('pinned_updated', product => {
@@ -368,7 +387,7 @@ function updatePinnedCard(p) {
 const flashSaleBanner = document.getElementById('flash-sale-banner');
 const flashCountdown = document.getElementById('flash-countdown');
 
-socket.on('flash_sale_tick', state => {
+function updateFlashSaleBanner(state) {
   if (!flashSaleBanner || !flashCountdown) return;
   if (state && state.active && state.remainingSeconds > 0) {
     flashSaleBanner.classList.remove('hidden');
@@ -378,7 +397,9 @@ socket.on('flash_sale_tick', state => {
   } else {
     flashSaleBanner.classList.add('hidden');
   }
-});
+}
+
+socket.on('flash_sale_tick', state => updateFlashSaleBanner(state));
 
 socket.on('flash_sale_stopped', () => {
   if (flashSaleBanner) {

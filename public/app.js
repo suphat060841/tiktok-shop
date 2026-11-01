@@ -126,7 +126,7 @@ socket.on('tiktok_status', data => {
     btnConnect.className = 'btn btn-outline-danger';
   } else {
     statusBadge.className = 'status-indicator disconnected';
-    statusText.textContent = 'ออฟไลน์ (พร้อมจำลอง)';
+    statusText.textContent = data.error ? `เชื่อมต่อไม่สำเร็จ (${data.error})` : 'ออฟไลน์ (พร้อมจำลอง)';
     btnConnect.textContent = 'เชื่อมต่อห้องไลฟ์';
     btnConnect.className = 'btn btn-primary';
   }
@@ -148,7 +148,9 @@ socket.on('member_join', join => {
 
 socket.on('ai_speaking', speech => {
   const isGemini = speech.meta?.type === 'gemini_faq';
-  const label = isGemini ? '🤖 แม่ค้า AI (Gemini ตอบ)' : 'แม่ค้า AI (พูดสด)';
+  const isMale = (appConfig.voice || '').includes('Niwat');
+  const selfTitle = isMale ? 'พ่อค้า AI' : 'แม่ค้า AI';
+  const label = isGemini ? `🤖 ${selfTitle} (Gemini ตอบ)` : `${selfTitle} (พูดสด)`;
   appendFeedItem(isGemini ? 'ai-speech gemini-reply' : 'ai-speech', label, speech.text, speech.timestamp);
 });
 
@@ -247,6 +249,9 @@ socket.on('products_updated', list => {
 socket.on('stats_update', stats => {
   if (stats.viewerCount !== undefined) {
     metricViewers.textContent = Number(stats.viewerCount).toLocaleString();
+  }
+  if (stats.likeCount !== undefined) {
+    metricLikes.textContent = Number(stats.likeCount).toLocaleString();
   }
 });
 
@@ -363,7 +368,10 @@ function renderFaqsList() {
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
         <strong style="color:#38bdf8; font-size:0.95rem;">${escapeHtml(f.title)}</strong>
-        <button class="btn btn-xs btn-glass btn-delete-faq" data-id="${f.id}" style="color:#f87171;">ลบ</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-xs btn-glass btn-edit-faq" data-id="${f.id}" style="color:#38bdf8;">✏️ แก้ไข</button>
+          <button class="btn btn-xs btn-glass btn-delete-faq" data-id="${f.id}" style="color:#f87171;">ลบ</button>
+        </div>
       </div>
       <div style="font-size:0.82rem; color:#f59e0b; margin-bottom:6px;">
         🏷️ คำสำคัญ: ${f.keywords.map(k => `<span style="background:rgba(245,158,11,0.15); padding:1px 6px; border-radius:4px; margin-right:4px;">${escapeHtml(k)}</span>`).join('')}
@@ -398,6 +406,10 @@ btnConnect.addEventListener('click', async () => {
       body: JSON.stringify({ username })
     });
   }
+});
+
+inputUsername.addEventListener('keydown', e => {
+  if (e.key === 'Enter') btnConnect.click();
 });
 
 // Settings Changes
@@ -622,6 +634,9 @@ simCustomSend?.addEventListener('click', sendCustomSimulation);
 simCustomComment?.addEventListener('keydown', e => {
   if (e.key === 'Enter') sendCustomSimulation();
 });
+simCustomUser?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') simCustomComment.focus();
+});
 
 btnClearFeed.addEventListener('click', () => {
   liveFeedContainer.innerHTML = '';
@@ -677,11 +692,33 @@ document.querySelectorAll('.btn-use-script').forEach(btn => {
   });
 });
 
-// FAQ Modal
-btnManageFaqs.addEventListener('click', () => modalFaqs.classList.remove('hidden'));
-btnCloseFaqModal.addEventListener('click', () => modalFaqs.classList.add('hidden'));
+// FAQ Modal Elements
+const editFaqId = document.getElementById('edit-faq-id');
+const faqFormHeading = document.getElementById('faq-form-heading');
+const btnCancelFaqEdit = document.getElementById('btn-cancel-faq-edit');
+
+function resetFaqForm() {
+  if (editFaqId) editFaqId.value = '';
+  newFaqTitle.value = '';
+  newFaqKeywords.value = '';
+  newFaqAnswer.value = '';
+  if (faqFormHeading) faqFormHeading.textContent = '+ เพิ่มกฎคำถาม-คำตอบใหม่';
+  if (btnSaveNewFaq) btnSaveNewFaq.textContent = 'บันทึกกฎ FAQ';
+  if (btnCancelFaqEdit) btnCancelFaqEdit.classList.add('hidden');
+}
+
+btnManageFaqs.addEventListener('click', () => {
+  resetFaqForm();
+  modalFaqs.classList.remove('hidden');
+});
+btnCloseFaqModal.addEventListener('click', () => {
+  resetFaqForm();
+  modalFaqs.classList.add('hidden');
+});
+btnCancelFaqEdit?.addEventListener('click', resetFaqForm);
 
 btnSaveNewFaq.addEventListener('click', async () => {
+  const id = editFaqId?.value;
   const title = newFaqTitle.value.trim();
   const kw = newFaqKeywords.value.split(',').map(s => s.trim()).filter(Boolean);
   const answer = newFaqAnswer.value.trim();
@@ -691,18 +728,41 @@ btnSaveNewFaq.addEventListener('click', async () => {
     return;
   }
 
-  await fetch('/api/faqs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, keywords: kw, answer })
-  });
+  if (id) {
+    await fetch(`/api/faqs/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, keywords: kw, answer })
+    });
+  } else {
+    await fetch('/api/faqs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, keywords: kw, answer })
+    });
+  }
 
-  newFaqTitle.value = '';
-  newFaqKeywords.value = '';
-  newFaqAnswer.value = '';
+  resetFaqForm();
 });
 
 faqRulesList.addEventListener('click', e => {
+  const editBtn = e.target.closest('.btn-edit-faq');
+  if (editBtn) {
+    const id = editBtn.dataset.id;
+    const f = faqsList.find(x => x.id === Number(id));
+    if (f) {
+      if (editFaqId) editFaqId.value = f.id;
+      newFaqTitle.value = f.title || '';
+      newFaqKeywords.value = (f.keywords || []).join(', ');
+      newFaqAnswer.value = f.answer || '';
+      if (faqFormHeading) faqFormHeading.textContent = `✏️ แก้ไขกฎคำถาม: ${f.title}`;
+      if (btnSaveNewFaq) btnSaveNewFaq.textContent = 'บันทึกการแก้ไข';
+      if (btnCancelFaqEdit) btnCancelFaqEdit.classList.remove('hidden');
+      newFaqTitle.scrollIntoView({ behavior: 'smooth' });
+    }
+    return;
+  }
+
   const delBtn = e.target.closest('.btn-delete-faq');
   if (delBtn) {
     const id = delBtn.dataset.id;
@@ -793,9 +853,28 @@ function updateAnalyticsUI(stats) {
   const ordersEl = document.getElementById('stat-orders');
   const peakEl = document.getElementById('stat-peak');
   const topProductEl = document.getElementById('stat-top-product');
+  const ordersFeed = document.getElementById('orders-feed');
+
   if (ordersEl) ordersEl.textContent = stats.totalOrders || 0;
   if (peakEl) peakEl.textContent = stats.peakViewers || 0;
   if (topProductEl) topProductEl.textContent = stats.topProductId ? `#${stats.topProductId}` : '-';
+
+  if (ordersFeed) {
+    if (!stats.orders || stats.orders.length === 0) {
+      ordersFeed.innerHTML = '<div class="feed-empty-hint">ยังไม่มีออเดอร์ในไลฟ์นี้</div>';
+    } else {
+      ordersFeed.innerHTML = stats.orders.slice().reverse().map(o => `
+        <div class="order-feed-item">
+          <span class="order-time">${escapeHtml(o.timestamp)}</span>
+          <div class="order-content">
+            <span class="order-user">@${escapeHtml(o.user)}</span>
+            <span class="order-product"> สั่ง: ${escapeHtml(o.productTitle || (o.productId ? `ตะกร้า #${o.productId}` : 'สินค้า'))}</span>
+            <div class="order-comment">💬 "${escapeHtml(o.comment)}"</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
 }
 
 const btnExportCsv = document.getElementById('btn-export-csv');

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TikTok Live AI - Smart Selling Studio v3.0</title>
+  <title>TikTok Live AI - Smart Selling Studio v4.0</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
       <div class="brand-icon">🛍️</div>
       <div class="brand-text">
         <h1>TikTok Live AI</h1>
-        <span class="version-tag">SMART DIRECTOR v3.0</span>
+        <span class="version-tag">SMART DIRECTOR v4.0</span>
       </div>
     </div>
 
@@ -45,15 +45,15 @@
     <div class="nav-metrics">
       <div class="metric-card">
         <span class="metric-label">👥 ผู้ชม</span>
-        <span class="metric-val" id="metric-viewers">1,250</span>
+        <span class="metric-val" id="metric-viewers">0</span>
       </div>
       <div class="metric-card">
         <span class="metric-label">❤️ กดถูกใจ</span>
-        <span class="metric-val" id="metric-likes">14.8K</span>
+        <span class="metric-val" id="metric-likes">0</span>
       </div>
       <div class="metric-card">
         <span class="metric-label">🎁 ของขวัญ</span>
-        <span class="metric-val" id="metric-gifts">86</span>
+        <span class="metric-val" id="metric-gifts">0</span>
       </div>
     </div>
   </header>
@@ -379,7 +379,15 @@
               <span class="stat-label">สินค้าขายดีสุด</span>
             </div>
           </div>
-          <button class="btn btn-outline btn-full" id="btn-export-csv">⬇️ Export CSV ยอดขาย</button>
+          <button class="btn btn-outline btn-full mb-3" id="btn-export-csv">⬇️ Export CSV ยอดขาย</button>
+
+          <!-- Live Orders Feed -->
+          <div class="recent-orders-box">
+            <h3 class="orders-title">📋 รายการออเดอร์ในไลฟ์</h3>
+            <div class="orders-feed" id="orders-feed">
+              <div class="feed-empty-hint">ยังไม่มีออเดอร์ในไลฟ์นี้</div>
+            </div>
+          </div>
         </div>
       </div>
     </aside>
@@ -394,7 +402,8 @@
       </div>
       <div class="modal-body">
         <div class="add-faq-form">
-          <h3>+ เพิ่มกฎคำถาม-คำตอบใหม่</h3>
+          <input type="hidden" id="edit-faq-id">
+          <h3 id="faq-form-heading">+ เพิ่มกฎคำถาม-คำตอบใหม่</h3>
           <div class="form-group">
             <label class="form-label">หัวข้อคำถาม</label>
             <input type="text" id="new-faq-title" placeholder="เช่น นโยบายการจัดส่งสินค้า..." class="form-input">
@@ -407,7 +416,10 @@
             <label class="form-label">คำตอบที่ให้แม่ค้า AI พูด</label>
             <textarea id="new-faq-answer" rows="3" placeholder="ข้อความที่ต้องการให้ AI ตอบเมื่อเจอคำสำคัญ..." class="form-textarea"></textarea>
           </div>
-          <button id="btn-save-new-faq" class="btn btn-primary">บันทึกกฎ FAQ</button>
+          <div style="display:flex; gap:8px;">
+            <button id="btn-save-new-faq" class="btn btn-primary" style="flex:1;">บันทึกกฎ FAQ</button>
+            <button id="btn-cancel-faq-edit" class="btn btn-glass hidden" style="flex:0 0 auto;">ยกเลิกแก้ไข</button>
+          </div>
         </div>
 
         <div class="faq-rules-list" id="faq-rules-list">

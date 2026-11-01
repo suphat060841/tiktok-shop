@@ -370,6 +370,22 @@ test('Config Persistence: data/config.json exists and is valid JSON', () => {
   assert.ok(parsed.voice && parsed.persona, 'config.json has voice and persona');
 });
 
+// ── V4.0 UI & System Hardening Verification ─────────────────────────────────
+test('UI: index.html has v4.0 versioning, recent orders feed, and FAQ edit inputs', () => {
+  const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
+  assert.ok(html.includes('v4.0'), 'Title or header reflects v4.0');
+  assert.ok(html.includes('id="orders-feed"'), 'Recent orders feed exists');
+  assert.ok(html.includes('id="edit-faq-id"'), 'FAQ edit hidden input exists');
+  assert.ok(html.includes('id="btn-cancel-faq-edit"'), 'FAQ cancel edit button exists');
+});
+
+test('FAQManager: update successfully updates an existing rule', () => {
+  const updated = faqManager.update(1, { title: 'นโยบายจัดส่งด่วนพิเศษ' });
+  assert.strictEqual(updated.title, 'นโยบายจัดส่งด่วนพิเศษ');
+  // Revert back
+  faqManager.update(1, { title: 'การจัดส่งสินค้าและระยะเวลา' });
+});
+
 console.log('\n====================================================');
 console.log(`📊 TEST RESULTS: ${passedTests} PASSED, ${failedTests} FAILED`);
 console.log('====================================================\n');

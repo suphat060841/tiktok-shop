@@ -1028,7 +1028,13 @@ io.on('connection', (socket) => {
     config: CONFIG,
     products: productManager.getAll(),
     pinnedProduct: productManager.getPinned(),
-    faqs: faqManager.getAll()
+    faqs: faqManager.getAll(),
+    flashSale: flashSaleManager.getState(),
+    session: sessionTracker.getStats(),
+    tiktok: {
+      connected: !!(tiktokConnection && tiktokConnection.isConnected),
+      username: currentTikTokUsername
+    }
   });
 });
 
@@ -1127,10 +1133,15 @@ function connectTikTok(username) {
     io.emit('stats_update', { viewerCount: data.viewerCount });
   });
 
+  tiktokConnection.on('like', data => {
+    io.emit('stats_update', { likeCount: data.totalLikeCount || data.likeCount });
+  });
+
   tiktokConnection.on('disconnected', () => {
     console.log('[TikTok] Disconnected from live stream.');
     sessionTracker.saveSession();
-    io.emit('tiktok_status', { connected: false, username: currentTikTokUsername });
+    currentTikTokUsername = '';
+    io.emit('tiktok_status', { connected: false, username: '' });
   });
 }
 
@@ -1189,9 +1200,11 @@ app.post('/api/tiktok/connect', (req, res) => {
 
 app.post('/api/tiktok/disconnect', (req, res) => {
   if (tiktokConnection) {
-    tiktokConnection.disconnect();
+    try { tiktokConnection.disconnect(); } catch (e) {}
     tiktokConnection = null;
   }
+  currentTikTokUsername = '';
+  io.emit('tiktok_status', { connected: false, username: '' });
   res.json({ success: true, disconnected: true });
 });
 
