@@ -265,6 +265,103 @@ class FAQManager {
 }
 
 // ----------------------------------------------------
+// 2.5. Session Tracker & Analytics
+// ----------------------------------------------------
+class SessionTracker {
+  constructor() {
+    this.orders = [];
+    this.peakViewers = 0;
+    this.startTime = null;
+    this.sessionsDir = path.join(__dirname, 'data', 'sessions');
+    try {
+      if (!fs.existsSync(this.sessionsDir)) {
+        fs.mkdirSync(this.sessionsDir, { recursive: true });
+      }
+    } catch (err) {
+      console.error('Error creating sessions directory:', err);
+    }
+  }
+
+  startSession() {
+    this.orders = [];
+    this.peakViewers = 0;
+    this.startTime = Date.now();
+  }
+
+  recordOrder(user, productId, productTitle, comment) {
+    if (comment === undefined && typeof productTitle === 'string') {
+      comment = productTitle;
+      productTitle = '';
+    }
+    this.orders.push({
+      user,
+      productId,
+      productTitle: productTitle || '',
+      comment: comment || '',
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  updatePeakViewers(count) {
+    const num = Number(count) || 0;
+    this.peakViewers = Math.max(this.peakViewers, num);
+  }
+
+  getStats() {
+    let topProductId = null;
+    if (this.orders.length > 0) {
+      const counts = {};
+      let maxCount = 0;
+      for (const order of this.orders) {
+        const pid = order.productId;
+        counts[pid] = (counts[pid] || 0) + 1;
+        if (counts[pid] > maxCount) {
+          maxCount = counts[pid];
+          topProductId = pid;
+        }
+      }
+    }
+
+    return {
+      orders: this.orders,
+      totalOrders: this.orders.length,
+      topProductId,
+      peakViewers: this.peakViewers,
+      durationMs: this.startTime ? Date.now() - this.startTime : 0,
+      startTime: this.startTime
+    };
+  }
+
+  exportCSV() {
+    const header = 'timestamp,user,productId,productTitle,comment';
+    if (this.orders.length === 0) {
+      return header;
+    }
+    const rows = this.orders.map(o => `${o.timestamp},${o.user},${o.productId},${o.productTitle},${o.comment}`);
+    return [header, ...rows].join('\n');
+  }
+
+  saveSession() {
+    try {
+      if (!fs.existsSync(this.sessionsDir)) {
+        fs.mkdirSync(this.sessionsDir, { recursive: true });
+      }
+      const d = new Date(this.startTime || Date.now());
+      const pad = (n) => String(n).padStart(2, '0');
+      const filename = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+      const filePath = path.join(this.sessionsDir, filename);
+      const data = {
+        ...this.getStats(),
+        savedAt: new Date().toISOString()
+      };
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('Error saving session:', err);
+    }
+  }
+}
+
+// ----------------------------------------------------
 // 3. Audio Mixer Child Process Bridge
 // ----------------------------------------------------
 class AudioMixerBridge {
@@ -548,6 +645,7 @@ const productManager = new ProductManager();
 const faqManager = new FAQManager();
 const audioMixer = new AudioMixerBridge();
 const aiBrain = new AIBrain(productManager, faqManager, audioMixer);
+const sessionTracker = new SessionTracker();
 
 // Forward mixer speech finished callback to AI Brain queue
 audioMixer.onSpeechFinished = () => {
@@ -888,6 +986,7 @@ export {
   productManager,
   faqManager,
   audioMixer,
-  aiBrain
+  aiBrain,
+  sessionTracker
 };
 
