@@ -82,6 +82,8 @@ const requiredFiles = [
   'public/assets/avatar_idle.jpg',
   'public/assets/avatar_speaking.jpg',
   'public/assets/avatar_blink.jpg',
+  'public/assets/avatar_idle.mp4',
+  'public/assets/avatar_talking.mp4',
   'sounds/ding.wav',
   'sounds/cash.wav',
   'sounds/cheer.wav',
@@ -384,6 +386,22 @@ test('FAQManager: update successfully updates an existing rule', () => {
   assert.strictEqual(updated.title, 'นโยบายจัดส่งด่วนพิเศษ');
   // Revert back
   faqManager.update(1, { title: 'การจัดส่งสินค้าและระยะเวลา' });
+});
+
+test('Avatar Video Engine: MP4 assets exist, valid size, and seamless loop support', () => {
+  const idleStat = fs.statSync(path.join(__dirname, 'public/assets/avatar_idle.mp4'));
+  const talkStat = fs.statSync(path.join(__dirname, 'public/assets/avatar_talking.mp4'));
+  assert.ok(idleStat.size > 500000, 'avatar_idle.mp4 size > 500KB');
+  assert.ok(talkStat.size > 500000, 'avatar_talking.mp4 size > 500KB');
+  
+  const overlayHtml = fs.readFileSync(path.join(__dirname, 'public/stream-overlay.html'), 'utf-8');
+  assert.ok(overlayHtml.includes('video-avatar-idle'), 'stream-overlay.html has video-avatar-idle');
+  assert.ok(overlayHtml.includes('video-avatar-talk'), 'stream-overlay.html has video-avatar-talk');
+  assert.ok(overlayHtml.includes('preload="auto"'), 'stream-overlay.html preloads video avatars');
+
+  const overlayJs = fs.readFileSync(path.join(__dirname, 'public/stream-overlay.js'), 'utf-8');
+  assert.ok(overlayJs.includes('activateVideoMode'), 'stream-overlay.js has activateVideoMode');
+  assert.ok(overlayJs.includes('updateVideoAvatarState'), 'stream-overlay.js has updateVideoAvatarState');
 });
 
 console.log('\n====================================================');

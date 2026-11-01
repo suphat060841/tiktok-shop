@@ -287,21 +287,34 @@ document.addEventListener('click', () => {
   }
 }, { once: false });
 
-// Video Avatar Elements (High-Fidelity LivePortrait / MuseTalk)
+// Video Avatar Elements (High-Fidelity Seamless Video Loops)
 const videoIdle = document.getElementById('video-avatar-idle');
 const videoTalk = document.getElementById('video-avatar-talk');
 let useVideoMode = false;
 
+function activateVideoMode() {
+  if (useVideoMode) return;
+  useVideoMode = true;
+  avatarCanvas.style.display = 'none';
+  if (videoIdle) {
+    videoIdle.style.opacity = '1';
+    videoIdle.play().catch(() => {});
+  }
+  if (videoTalk) {
+    videoTalk.play().catch(() => {});
+  }
+  console.log('[AvatarEngine] High-Fidelity Video Avatar Mode Activated (Seamless Loops)!');
+}
+
 function checkVideoAvatarSupport() {
   if (videoIdle && videoTalk) {
-    videoIdle.addEventListener('canplay', () => {
-      useVideoMode = true;
-      avatarCanvas.style.display = 'none';
-      videoIdle.style.opacity = '1';
-      videoIdle.play().catch(() => {});
-      console.log('[AvatarEngine] High-Fidelity Video Avatar Mode Activated (LivePortrait/MuseTalk)!');
-    });
+    if (videoIdle.readyState >= 3) {
+      activateVideoMode();
+    } else {
+      videoIdle.addEventListener('canplay', activateVideoMode, { once: true });
+    }
     videoIdle.addEventListener('error', () => {
+      console.warn('[AvatarEngine] Video idle failed to load, falling back to Canvas 2D Morphing.');
       useVideoMode = false;
       avatarCanvas.style.display = 'block';
     });
@@ -313,7 +326,6 @@ function updateVideoAvatarState(state) {
   if (!useVideoMode) return;
   if (state === 'speaking') {
     if (videoTalk) {
-      videoTalk.currentTime = 0;
       videoTalk.play().catch(() => {});
       videoTalk.style.opacity = '1';
     }
