@@ -1054,5 +1054,85 @@ body.dashboard-body {
   animation: pulse 1s infinite alternate;
 }
 
+/* Enhanced UI: Side Panel Mode Tabs & Quick Action Bar */
+.panel-tab-nav {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 12px;
+  gap: 4px;
+}
+
+.panel-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'Kanit', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.panel-tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.panel-tab-btn.active {
+  background: linear-gradient(135deg, var(--primary), #e60067);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(254, 44, 85, 0.4);
+}
+
+.nav-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+
+.btn-quick {
+  font-family: 'Kanit', sans-serif;
+  font-size: 0.82rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.1s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-quick:hover {
+  opacity: 0.95;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-quick:active {
+  transform: scale(0.95);
+}
+
+.highlight-pulse {
+  animation: flash-border-pulse 0.5s ease-in-out 3;
+}
+
+@keyframes flash-border-pulse {
+  0% { box-shadow: 0 0 0 rgba(255, 0, 85, 0); }
+  50% { box-shadow: 0 0 20px rgba(255, 0, 85, 0.8); }
+  100% { box-shadow: 0 0 0 rgba(255, 0, 85, 0); }
+}
+
 
 

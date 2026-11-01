@@ -825,5 +825,60 @@ fetch('/api/flash-sale/state')
   .then(state => updateFlashSaleUI(state))
   .catch(err => console.error('[FlashSale] Failed to fetch state:', err));
 
+// ==========================================
+// 8. Side Panel Navigation & Quick Action Bar
+// ==========================================
+
+// Left Panel Tab Switcher
+document.querySelectorAll('[data-left-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-left-tab]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.left-tab-pane').forEach(p => p.classList.add('hidden'));
+    btn.classList.add('active');
+    const target = document.getElementById(btn.dataset.leftTab);
+    if (target) target.classList.remove('hidden');
+  });
+});
+
+// Right Panel Tab Switcher
+document.querySelectorAll('[data-right-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-right-tab]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.right-tab-pane').forEach(p => p.classList.add('hidden'));
+    btn.classList.add('active');
+    const target = document.getElementById(btn.dataset.rightTab);
+    if (target) target.classList.remove('hidden');
+  });
+});
+
+// Quick Action Bar Handlers (Header)
+const quickBtnStop = document.getElementById('quick-btn-stop');
+if (quickBtnStop) {
+  quickBtnStop.addEventListener('click', () => {
+    const stopBtn = document.getElementById('btn-stop-speech');
+    if (stopBtn) stopBtn.click();
+  });
+}
+
+const quickBtnUrgency = document.getElementById('quick-btn-urgency');
+if (quickBtnUrgency) {
+  quickBtnUrgency.addEventListener('click', () => {
+    const urgencyBtn = document.getElementById('btn-urgency-alert');
+    if (urgencyBtn) urgencyBtn.click();
+  });
+}
+
+const quickBtnFlash = document.getElementById('quick-btn-flash');
+if (quickBtnFlash) {
+  quickBtnFlash.addEventListener('click', () => {
+    const flashBox = document.getElementById('flash-sale-box');
+    if (flashBox) {
+      flashBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      flashBox.classList.add('highlight-pulse');
+      setTimeout(() => flashBox.classList.remove('highlight-pulse'), 1500);
+    }
+  });
+}
+
 
 

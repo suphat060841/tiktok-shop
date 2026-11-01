@@ -34,6 +34,13 @@
       </div>
     </div>
 
+    <!-- Quick Action Bar -->
+    <div class="nav-quick-actions">
+      <button id="quick-btn-stop" class="btn btn-quick btn-danger" title="หยุดเสียงพูดทั้งหมดทันที">⏹️ หยุดพูด</button>
+      <button id="quick-btn-urgency" class="btn btn-quick btn-warning" title="ส่งเสียงแจ้งเตือนสต็อกด่วน">🚨 เร่งปิดยอด</button>
+      <button id="quick-btn-flash" class="btn btn-quick btn-accent" title="จัดกิจกรรม Flash Sale">⚡ Flash Sale</button>
+    </div>
+
     <!-- Live Metrics Counter -->
     <div class="nav-metrics">
       <div class="metric-card">
@@ -56,99 +63,111 @@
 
     <!-- Left Column: AI Brain & Audio Settings -->
     <aside class="col-panel left-panel">
-      <!-- Persona & Voice Card -->
-      <div class="glass-card">
-        <h2 class="card-title">🌸 บุคลิกและเสียงพูดแม่ค้า AI</h2>
-        <div class="form-group">
-          <label class="form-label">สไตล์การพูด (Persona)</label>
-          <select id="select-persona" class="form-select">
-            <option value="sweet" selected>🌸 สายหวาน: อ่อนหวาน เป็นกันเอง (ลงท้ายนะคะ/ค่า)</option>
-            <option value="hype">🔥 สายไฮป์: กระฉับกระเฉง พลังงานสูง เร่งปิดยอด ด่วนๆๆ</option>
-            <option value="pro">💼 สายมืออาชีพ: สุภาพ ข้อมูลแน่น น่าเชื่อถือ</option>
-          </select>
-        </div>
+      <!-- Left Panel Navigation Tabs -->
+      <div class="panel-tab-nav">
+        <button class="panel-tab-btn active" data-left-tab="left-tab-ai">🌸 แม่ค้า AI & กฎไลฟ์</button>
+        <button class="panel-tab-btn" data-left-tab="left-tab-sound">🎵 สตูดิโอเสียง & พูดสด</button>
+      </div>
 
-        <div class="form-group">
-          <label class="form-label">เสียงภาษาไทยสังเคราะห์ (Neural TTS)</label>
-          <select id="select-voice" class="form-select">
-            <option value="th-TH-PremwadeeNeural" selected>หญิง: คุณเปรมวดี (เสียงหวาน สดใส เป็นธรรมชาติ)</option>
-            <option value="th-TH-NiwatNeural">ชาย: คุณนิวัฒน์ (เสียงชัดเจน หนักแน่น ชัดถ้อยชัดคำ)</option>
-          </select>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group col-6">
-            <label class="form-label">ความเร็วเสียง</label>
-            <select id="select-speed" class="form-select">
-              <option value="-10%">ช้า (-10%)</option>
-              <option value="+0%" selected>ปกติ (+0%)</option>
-              <option value="+10%">กระฉับกระเฉง (+10%)</option>
-              <option value="+20%">เร็ว (+20%)</option>
+      <!-- Left Tab 1: AI Persona & Automation -->
+      <div class="left-tab-pane" id="left-tab-ai">
+        <!-- Persona & Voice Card -->
+        <div class="glass-card">
+          <h2 class="card-title">🌸 บุคลิกและเสียงพูดแม่ค้า AI</h2>
+          <div class="form-group">
+            <label class="form-label">สไตล์การพูด (Persona)</label>
+            <select id="select-persona" class="form-select">
+              <option value="sweet" selected>🌸 สายหวาน: อ่อนหวาน เป็นกันเอง (ลงท้ายนะคะ/ค่า)</option>
+              <option value="hype">🔥 สายไฮป์: กระฉับกระเฉง พลังงานสูง เร่งปิดยอด ด่วนๆๆ</option>
+              <option value="pro">💼 สายมืออาชีพ: สุภาพ ข้อมูลแน่น น่าเชื่อถือ</option>
             </select>
           </div>
-          <div class="form-group col-6">
-            <label class="form-label">ระดับเสียง (<span id="val-volume">100%</span>)</label>
-            <input type="range" id="range-volume" min="0" max="1" step="0.05" value="1" class="form-range">
-          </div>
-        </div>
 
-        <!-- Automation Toggles (Smart Director) -->
-        <div class="toggles-container">
-          <label class="toggle-row">
-            <input type="checkbox" id="toggle-welcome" checked>
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">👋 ต้อนรับผู้ชมที่เข้ามาใหม่ด้วยเสียงพูด</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" id="toggle-comments" checked>
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">💬 ตอบคอมเมนต์และคำถาม FAQ อัตโนมัติ</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" id="toggle-gifts" checked>
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">🎁 ขอบคุณของขวัญทันที (พร้อม Sound FX)</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" id="toggle-auto-pitch" checked>
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">📢 แนะนำสินค้าอัตโนมัติเมื่อห้องเงียบเกิน 35 วิ</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" id="toggle-gemini">
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">🤖 Gemini AI ตอบคำถามนอกเหนือ FAQ อัตโนมัติ</span>
-          </label>
+          <div class="form-group">
+            <label class="form-label">เสียงภาษาไทยสังเคราะห์ (Neural TTS)</label>
+            <select id="select-voice" class="form-select">
+              <option value="th-TH-PremwadeeNeural" selected>หญิง: คุณเปรมวดี (เสียงหวาน สดใส เป็นธรรมชาติ)</option>
+              <option value="th-TH-NiwatNeural">ชาย: คุณนิวัฒน์ (เสียงชัดเจน หนักแน่น ชัดถ้อยชัดคำ)</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label class="form-label">ความเร็วเสียง</label>
+              <select id="select-speed" class="form-select">
+                <option value="-10%">ช้า (-10%)</option>
+                <option value="+0%" selected>ปกติ (+0%)</option>
+                <option value="+10%">กระฉับกระเฉง (+10%)</option>
+                <option value="+20%">เร็ว (+20%)</option>
+              </select>
+            </div>
+            <div class="form-group col-6">
+              <label class="form-label">ระดับเสียง (<span id="val-volume">100%</span>)</label>
+              <input type="range" id="range-volume" min="0" max="1" step="0.05" value="1" class="form-range">
+            </div>
+          </div>
+
+          <!-- Automation Toggles (Smart Director) -->
+          <div class="toggles-container">
+            <label class="toggle-row">
+              <input type="checkbox" id="toggle-welcome" checked>
+              <span class="toggle-slider"></span>
+              <span class="toggle-text">👋 ต้อนรับผู้ชมที่เข้ามาใหม่ด้วยเสียงพูด</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="toggle-comments" checked>
+              <span class="toggle-slider"></span>
+              <span class="toggle-text">💬 ตอบคอมเมนต์และคำถาม FAQ อัตโนมัติ</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="toggle-gifts" checked>
+              <span class="toggle-slider"></span>
+              <span class="toggle-text">🎁 ขอบคุณของขวัญทันที (พร้อม Sound FX)</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="toggle-auto-pitch" checked>
+              <span class="toggle-slider"></span>
+              <span class="toggle-text">📢 แนะนำสินค้าอัตโนมัติเมื่อห้องเงียบเกิน 35 วิ</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="toggle-gemini">
+              <span class="toggle-slider"></span>
+              <span class="toggle-text">🤖 Gemini AI ตอบคำถามนอกเหนือ FAQ อัตโนมัติ</span>
+            </label>
+          </div>
         </div>
       </div>
 
-      <!-- Soundboard & BGM Card -->
-      <div class="glass-card">
-        <h2 class="card-title">🎵 แผงควบคุมเสียงและ Sound FX</h2>
-        <div class="sound-buttons-grid">
-          <button class="btn btn-sfx" data-sfx="ding">🔔 กระดิ่ง (Ding)</button>
-          <button class="btn btn-sfx" data-sfx="cash">💰 เงินเข้า (Cash)</button>
-          <button class="btn btn-sfx" data-sfx="cheer">🎉 ปรบมือ (Cheer)</button>
-          <button class="btn btn-sfx" data-sfx="bell">🛎️ กริ่งเตือน (Bell)</button>
-        </div>
-        <div class="bgm-control-bar">
-          <button id="btn-toggle-bgm" class="btn btn-outline-primary">🎵 เปิดเพลงคลอ BGM</button>
-          <div class="bgm-vol-box">
-            <span>ความดัง:</span>
-            <input type="range" id="range-bgm-volume" min="0" max="0.8" step="0.05" value="0.25" class="form-range">
+      <!-- Left Tab 2: Audio Studio, Sound FX & Manual Speak -->
+      <div class="left-tab-pane hidden" id="left-tab-sound">
+        <!-- Soundboard & BGM Card -->
+        <div class="glass-card">
+          <h2 class="card-title">🎵 แผงควบคุมเสียงและ Sound FX</h2>
+          <div class="sound-buttons-grid">
+            <button class="btn btn-sfx" data-sfx="ding">🔔 กระดิ่ง (Ding)</button>
+            <button class="btn btn-sfx" data-sfx="cash">💰 เงินเข้า (Cash)</button>
+            <button class="btn btn-sfx" data-sfx="cheer">🎉 ปรบมือ (Cheer)</button>
+            <button class="btn btn-sfx" data-sfx="bell">🛎️ กริ่งเตือน (Bell)</button>
           </div>
+          <div class="bgm-control-bar">
+            <button id="btn-toggle-bgm" class="btn btn-outline-primary">🎵 เปิดเพลงคลอ BGM</button>
+            <div class="bgm-vol-box">
+              <span>ความดัง:</span>
+              <input type="range" id="range-bgm-volume" min="0" max="0.8" step="0.05" value="0.25" class="form-range">
+            </div>
+          </div>
+          <small class="hint-text">* มีระบบ Auto-Ducking: เพลงจะเบาลงอัตโนมัติ 80% ทันทีที่แม่ค้าเริ่มพูด</small>
         </div>
-        <small class="hint-text">* มีระบบ Auto-Ducking: เพลงจะเบาลงอัตโนมัติ 80% ทันทีที่แม่ค้าเริ่มพูด</small>
-      </div>
 
-      <!-- Manual Broadcast Card -->
-      <div class="glass-card">
-        <h2 class="card-title">📢 สั่งให้แม่ค้า AI พูดสดทันที</h2>
-        <div class="manual-speak-box">
-          <input type="text" id="manual-speak-input" placeholder="พิมพ์ข้อความที่ต้องการให้แม่ค้า AI พูด..." autocomplete="off">
-          <button id="btn-manual-speak" class="btn btn-accent">สั่งพูด</button>
+        <!-- Manual Broadcast Card -->
+        <div class="glass-card mt-3">
+          <h2 class="card-title">📢 สั่งให้แม่ค้า AI พูดสดทันที</h2>
+          <div class="manual-speak-box">
+            <input type="text" id="manual-speak-input" placeholder="พิมพ์ข้อความที่ต้องการให้แม่ค้า AI พูด..." autocomplete="off">
+            <button id="btn-manual-speak" class="btn btn-accent">สั่งพูด</button>
+          </div>
+          <button id="btn-stop-speech" class="btn btn-danger-full">⏹️ หยุดเสียงพูดทั้งหมดทันที</button>
         </div>
-        <button id="btn-stop-speech" class="btn btn-danger-full">⏹️ หยุดเสียงพูดทั้งหมดทันที</button>
       </div>
     </aside>
 
@@ -311,34 +330,44 @@
         </div>
       </div>
 
-      <!-- Session Analytics Panel -->
-      <div class="glass-card" id="analytics-panel">
-        <h2 class="card-title">📊 ยอดไลฟ์วันนี้</h2>
-        <div class="analytics-grid">
-          <div class="analytics-stat">
-            <span class="stat-num" id="stat-orders">0</span>
-            <span class="stat-label">ออเดอร์</span>
-          </div>
-          <div class="analytics-stat">
-            <span class="stat-num" id="stat-peak">0</span>
-            <span class="stat-label">ผู้ชมสูงสุด</span>
-          </div>
-          <div class="analytics-stat" id="stat-top-product-wrap">
-            <span class="stat-num" id="stat-top-product">-</span>
-            <span class="stat-label">สินค้าขายดีสุด</span>
-          </div>
-        </div>
-        <button class="btn btn-outline btn-full" id="btn-export-csv">⬇️ Export CSV ยอดขาย</button>
+      <!-- Right Tab Navigation -->
+      <div class="panel-tab-nav mt-3">
+        <button class="panel-tab-btn active" data-right-tab="right-tab-catalog">📦 รายการสินค้า (<span id="product-count">0</span>)</button>
+        <button class="panel-tab-btn" data-right-tab="right-tab-analytics">📊 ยอดขายไลฟ์นี้</button>
       </div>
 
-      <!-- Product Catalog List -->
-      <div class="glass-card">
-        <div class="flex-between mb-3">
-          <h2 class="card-title mb-0">📦 รายการสินค้าในไลฟ์ (<span id="product-count">0</span>)</h2>
-          <button id="btn-open-add-product" class="btn btn-xs btn-primary">+ เพิ่มสินค้า</button>
+      <!-- Right Tab 1: Product Catalog -->
+      <div class="right-tab-pane" id="right-tab-catalog">
+        <div class="glass-card">
+          <div class="flex-between mb-3">
+            <h2 class="card-title mb-0">📦 รายการสินค้าในไลฟ์</h2>
+            <button id="btn-open-add-product" class="btn btn-xs btn-primary">+ เพิ่มสินค้า</button>
+          </div>
+          <div class="product-list" id="product-list">
+            <!-- Injected via app.js -->
+          </div>
         </div>
-        <div class="product-list" id="product-list">
-          <!-- Injected via app.js -->
+      </div>
+
+      <!-- Right Tab 2: Session Analytics Panel -->
+      <div class="right-tab-pane hidden" id="right-tab-analytics">
+        <div class="glass-card" id="analytics-panel">
+          <h2 class="card-title">📊 ยอดไลฟ์วันนี้</h2>
+          <div class="analytics-grid">
+            <div class="analytics-stat">
+              <span class="stat-num" id="stat-orders">0</span>
+              <span class="stat-label">ออเดอร์</span>
+            </div>
+            <div class="analytics-stat">
+              <span class="stat-num" id="stat-peak">0</span>
+              <span class="stat-label">ผู้ชมสูงสุด</span>
+            </div>
+            <div class="analytics-stat" id="stat-top-product-wrap">
+              <span class="stat-num" id="stat-top-product">-</span>
+              <span class="stat-label">สินค้าขายดีสุด</span>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-full" id="btn-export-csv">⬇️ Export CSV ยอดขาย</button>
         </div>
       </div>
     </aside>
