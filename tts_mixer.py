@@ -145,9 +145,10 @@ async def handle_speak(data):
             send_event('speech_fallback', id=speech_id, text=text, error=str(e))
             return
 
-    # Play local audio via Pygame if available
+    # Play local audio via Pygame if available (skip physical playback if headless dummy driver)
+    is_dummy = os.environ.get('SDL_AUDIODRIVER') == 'dummy'
     played_locally = False
-    if has_valid_cache and SPEECH_CHANNEL:
+    if has_valid_cache and SPEECH_CHANNEL and not is_dummy:
         try:
             sound = pygame.mixer.Sound(filepath)
             SPEECH_CHANNEL.stop()

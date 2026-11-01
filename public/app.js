@@ -46,6 +46,11 @@ const obsUrlInput = document.getElementById('obs-url-input');
 const btnCopyObs = document.getElementById('btn-copy-obs');
 const monitorIframe = document.getElementById('monitor-iframe');
 
+// Automatically set live overlay URL based on current host (Localhost or Render)
+if (obsUrlInput && window.location.origin) {
+  obsUrlInput.value = `${window.location.origin}/stream-overlay`;
+}
+
 // Script Generator Elements
 const genTitle = document.getElementById('gen-title');
 const genPrice = document.getElementById('gen-price');

@@ -212,9 +212,11 @@ function speakOverlayAudio(data) {
   if (!data || !data.text) return;
   // If muted in iframe preview, do not produce sound
   if (urlParams.get('muted') === '1') return;
-  // If Python audio mixer already played the sound locally on the host machine,
-  // do not duplicate playback unless specifically requested via ?audio=1
-  if (data.playedLocally && urlParams.get('audio') !== '1') return;
+  // If Python audio mixer already played the sound locally on the same host machine (localhost only),
+  // do not duplicate playback unless specifically requested via ?audio=1.
+  // When running on cloud (Render / remote host), always play audio in browser source.
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (isLocalhost && data.playedLocally && urlParams.get('audio') !== '1') return;
 
   // 1. If audio file URL is available, play high-quality neural voice
   if (data.audioUrl && !data.fallback) {
