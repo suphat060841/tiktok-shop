@@ -736,4 +736,75 @@ fetch('/api/session/stats')
   .then(stats => updateAnalyticsUI(stats))
   .catch(err => console.error('[Analytics] Failed to fetch stats:', err));
 
+// Flash Sale Dashboard Controller
+const flashSetupRow = document.getElementById('flash-setup-row');
+const flashActiveRow = document.getElementById('flash-active-row');
+const flashBadgeStatus = document.getElementById('flash-badge-status');
+const flashDashboardTimer = document.getElementById('flash-dashboard-timer');
+const btnFlashStart = document.getElementById('btn-flash-start');
+const btnFlashStop = document.getElementById('btn-flash-stop');
+const selectFlashDuration = document.getElementById('flash-duration');
+
+function updateFlashSaleUI(state) {
+  if (!state || !state.active || state.remainingSeconds <= 0) {
+    if (flashSetupRow) flashSetupRow.classList.remove('hidden');
+    if (flashActiveRow) flashActiveRow.classList.add('hidden');
+    if (flashBadgeStatus) {
+      flashBadgeStatus.textContent = 'ปิดอยู่';
+      flashBadgeStatus.className = 'status-pill-inactive';
+    }
+  } else {
+    if (flashSetupRow) flashSetupRow.classList.add('hidden');
+    if (flashActiveRow) flashActiveRow.classList.remove('hidden');
+    if (flashBadgeStatus) {
+      flashBadgeStatus.textContent = 'กำลังทำงาน 🔥';
+      flashBadgeStatus.className = 'status-pill-active';
+    }
+    if (flashDashboardTimer) {
+      const m = Math.floor(state.remainingSeconds / 60).toString().padStart(2, '0');
+      const s = (state.remainingSeconds % 60).toString().padStart(2, '0');
+      flashDashboardTimer.textContent = `${m}:${s}`;
+    }
+  }
+}
+
+if (btnFlashStart) {
+  btnFlashStart.addEventListener('click', () => {
+    const mins = selectFlashDuration ? parseInt(selectFlashDuration.value) || 3 : 3;
+    const pid = pinnedProduct?.id || 1;
+    fetch('/api/flash-sale/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ durationMinutes: mins, productId: pid })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.state) updateFlashSaleUI(res.state);
+      })
+      .catch(err => console.error('[FlashSale] Failed to start:', err));
+  });
+}
+
+if (btnFlashStop) {
+  btnFlashStop.addEventListener('click', () => {
+    fetch('/api/flash-sale/stop', { method: 'POST' })
+      .then(r => r.json())
+      .then(() => {
+        updateFlashSaleUI({ active: false });
+      })
+      .catch(err => console.error('[FlashSale] Failed to stop:', err));
+  });
+}
+
+// Socket events for Flash Sale
+socket.on('flash_sale_tick', state => updateFlashSaleUI(state));
+socket.on('flash_sale_stopped', () => updateFlashSaleUI({ active: false }));
+
+// Initial state check
+fetch('/api/flash-sale/state')
+  .then(r => r.json())
+  .then(state => updateFlashSaleUI(state))
+  .catch(err => console.error('[FlashSale] Failed to fetch state:', err));
+
+
 

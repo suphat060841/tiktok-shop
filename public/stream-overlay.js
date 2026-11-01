@@ -355,3 +355,26 @@ function updatePinnedCard(p) {
   badgeStock.textContent = `เหลือ ${p.stock !== undefined ? p.stock : 50} ชิ้น`;
 }
 
+// Flash Sale Overlay Controller
+const flashSaleBanner = document.getElementById('flash-sale-banner');
+const flashCountdown = document.getElementById('flash-countdown');
+
+socket.on('flash_sale_tick', state => {
+  if (!flashSaleBanner || !flashCountdown) return;
+  if (state && state.active && state.remainingSeconds > 0) {
+    flashSaleBanner.classList.remove('hidden');
+    const m = Math.floor(state.remainingSeconds / 60).toString().padStart(2, '0');
+    const s = (state.remainingSeconds % 60).toString().padStart(2, '0');
+    flashCountdown.textContent = `${m}:${s}`;
+  } else {
+    flashSaleBanner.classList.add('hidden');
+  }
+});
+
+socket.on('flash_sale_stopped', () => {
+  if (flashSaleBanner) {
+    flashSaleBanner.classList.add('hidden');
+  }
+});
+
+

@@ -279,6 +279,31 @@
             🛒 ขายออก 1 ชิ้น (-1 สต็อก)
           </button>
         </div>
+
+        <!-- Flash Sale Trigger Controls -->
+        <div class="flash-sale-box mt-3" id="flash-sale-box">
+          <div class="flex-between">
+            <span class="flash-box-title">⚡ กิจกรรม Flash Sale</span>
+            <span id="flash-badge-status" class="status-pill-inactive">ปิดอยู่</span>
+          </div>
+          <div class="flash-input-row mt-2" id="flash-setup-row">
+            <select id="flash-duration" class="form-select" style="flex: 1;">
+              <option value="1">1 นาที (เร่งด่วน)</option>
+              <option value="3" selected>3 นาที (แนะนำ)</option>
+              <option value="5">5 นาที (มาตรฐาน)</option>
+              <option value="10">10 นาที</option>
+            </select>
+            <button id="btn-flash-start" class="btn btn-danger">เริ่ม Flash Sale ⚡</button>
+          </div>
+          <div class="flash-active-row mt-2 hidden" id="flash-active-row">
+            <div class="flash-timer-display">
+              <span class="status-dot pulsing"></span>
+              <span>กำลังนับถอยหลัง: </span>
+              <strong id="flash-dashboard-timer" class="flash-time-text">00:00</strong>
+            </div>
+            <button id="btn-flash-stop" class="btn btn-secondary btn-sm">หยุด Flash Sale</button>
+          </div>
+        </div>
       </div>
 
       <!-- Session Analytics Panel -->

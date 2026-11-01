@@ -467,3 +467,44 @@ body.overlay-body {
   z-index: 30;
 }
 
+/* Flash Sale Overlay Banner (Strict 9:16 responsive with container queries) */
+.flash-sale-banner {
+  position: absolute;
+  top: clamp(80px, 12cqw, 140px);
+  right: clamp(16px, 4cqw, 36px);
+  background: linear-gradient(135deg, #ff0055, #ff5500);
+  border: clamp(2px, 0.4cqw, 4px) solid #fff;
+  border-radius: clamp(12px, 2.2cqw, 20px);
+  padding: clamp(8px, 1.5cqw, 16px) clamp(16px, 3cqw, 28px);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 4px 30px rgba(255, 0, 85, 0.8), 0 0 20px rgba(255, 85, 0, 0.6);
+  z-index: 100;
+  animation: flash-pulse 1.2s ease-in-out infinite alternate;
+}
+.flash-sale-banner.hidden {
+  display: none;
+}
+.flash-tag {
+  font-size: clamp(0.7rem, 2.2cqw, 1.2rem);
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+.flash-countdown {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1.6rem, 5.5cqw, 3.2rem);
+  font-weight: 900;
+  line-height: 1;
+  margin-top: 4px;
+  letter-spacing: 2px;
+  color: #fffa65;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+@keyframes flash-pulse {
+  from { transform: scale(1); box-shadow: 0 4px 20px rgba(255, 0, 85, 0.6); }
+  to { transform: scale(1.05); box-shadow: 0 6px 36px rgba(255, 85, 0, 0.9); }
+}
+
+
