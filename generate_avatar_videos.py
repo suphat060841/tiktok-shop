@@ -130,6 +130,23 @@ def load_source_images(force_auto_morph=False):
     if idle is None:
         raise ValueError(f"Failed to decode base image: {IDLE_IMG_PATH}")
     h, w = idle.shape[:2]
+
+    # 1. Cap maximum resolution to 1080x1920 for optimal streaming performance
+    MAX_H = 1920
+    if h > MAX_H:
+        scale = MAX_H / float(h)
+        new_w = int(w * scale)
+        new_h = MAX_H
+        if HAVE_CV2:
+            idle = cv2.resize(idle, (new_w, new_h), interpolation=cv2.INTER_AREA)
+        elif HAVE_PIL:
+            idle = np.array(Image.fromarray(idle).resize((new_w, new_h), Image.Resampling.LANCZOS))
+        h, w = idle.shape[:2]
+
+    # 2. Strict H.264 requirement: width and height MUST be even numbers!
+    w = w - (w % 2)
+    h = h - (h % 2)
+    idle = idle[:h, :w]
     
     needs_morph = force_auto_morph or not os.path.exists(SPEAKING_IMG_PATH) or not os.path.exists(BLINK_IMG_PATH)
     if needs_morph:
@@ -143,6 +160,9 @@ def load_source_images(force_auto_morph=False):
             if HAVE_CV2:
                 speaking = cv2.resize(speaking, (w, h))
                 blink = cv2.resize(blink, (w, h))
+            else:
+                speaking = speaking[:h, :w]
+                blink = blink[:h, :w]
     
     return idle, speaking, blink, w, h
 
@@ -170,94 +190,126 @@ def get_blink_factor(t, blink_times, blink_duration=0.22):
                 factor = max(factor, 1.0 - ((progress - 0.55) / 0.45))
     return factor
 
-def open_video_writer(out_path, w, h, fps):
-    if HAVE_AV:
-        try:
-            container = av.open(out_path, mode='w')
-            stream = container.add_stream('h264', rate=fps)
-            stream.width = w
-            stream.height = h
-            stream.pix_fmt = 'yuv420p'
-            stream.options = {'crf': '18', 'preset': 'fast'}
-            return ('av', container, stream)
-        except Exception as e:
-            sys.stderr.write(f"[open_video_writer] PyAV writer failed: {e}. Falling back to FFmpeg pipe.\n")
-    
-    ffmpeg_bin = find_ffmpeg()
-    # Test encoder choice
-    codec = 'libx264'
-    if sys.platform == 'win32' and 'ffmpeg.exe' in ffmpeg_bin:
-        codec = 'libopenh264'
-    
-    cmd = [
-        ffmpeg_bin, '-y',
-        '-f', 'rawvideo',
-        '-vcodec', 'rawvideo',
-        '-s', f'{w}x{h}',
-        '-pix_fmt', 'rgb24',
-        '-r', str(fps),
-        '-i', '-',
-        '-c:v', codec,
-        '-pix_fmt', 'yuv420p',
-        out_path
-    ]
-    try:
-        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        return ('ffmpeg', proc, None)
-    except Exception as e:
-        sys.stderr.write(f"[open_video_writer] FFmpeg pipe launch failed: {e}\n")
-        # Final fallback: direct image loop via ffmpeg
-        return ('fallback_direct', None, None)
+class RobustVideoWriter:
+    """
+    Self-healing video writer: tries PyAV in-memory encoder first;
+    seamlessly falls back to FFmpeg rawvideo pipe or static loop if any external library error occurs.
+    """
+    def __init__(self, out_path, w, h, fps, fallback_img_path):
+        self.out_path = out_path
+        self.w = w - (w % 2)
+        self.h = h - (h % 2)
+        self.fps = fps
+        self.fallback_img_path = fallback_img_path
+        self.mode = None
+        self.handle = None
+        self.stream = None
+        self._init_writer()
 
-def write_video_frame(writer_info, rgb_frame):
-    mode, handle, stream = writer_info
-    if mode == 'av':
-        frame = av.VideoFrame.from_ndarray(rgb_frame, format='rgb24')
-        for packet in stream.encode(frame):
-            handle.mux(packet)
-    elif mode == 'ffmpeg':
-        try:
-            handle.stdin.write(rgb_frame.tobytes())
-        except Exception:
-            pass
+    def _init_writer(self):
+        if HAVE_AV:
+            try:
+                self.handle = av.open(self.out_path, mode='w')
+                self.stream = self.handle.add_stream('h264', rate=self.fps)
+                self.stream.width = self.w
+                self.stream.height = self.h
+                self.stream.pix_fmt = 'yuv420p'
+                self.stream.options = {'crf': '18', 'preset': 'fast'}
+                self.mode = 'av'
+                return
+            except Exception as e:
+                sys.stderr.write(f"[RobustVideoWriter] PyAV open failed: {e}\n")
+        self._init_ffmpeg_pipe()
 
-def close_video_writer(writer_info, out_path, fallback_img_path, duration, fps):
-    mode, handle, stream = writer_info
-    if mode == 'av':
-        for packet in stream.encode():
-            handle.mux(packet)
-        handle.close()
-    elif mode == 'ffmpeg':
-        try:
-            handle.stdin.close()
-            handle.wait()
-        except Exception:
-            pass
-    elif mode == 'fallback_direct':
-        # Direct fallback: loop the still image via FFmpeg
+    def _init_ffmpeg_pipe(self):
+        self.mode = 'ffmpeg'
         ffmpeg_bin = find_ffmpeg()
+        codec = 'libopenh264' if sys.platform == 'win32' and 'ffmpeg.exe' in ffmpeg_bin else 'libx264'
         cmd = [
             ffmpeg_bin, '-y',
-            '-loop', '1',
-            '-i', fallback_img_path,
-            '-c:v', 'libx264',
-            '-t', str(duration),
+            '-f', 'rawvideo',
+            '-vcodec', 'rawvideo',
+            '-s', f'{self.w}x{self.h}',
+            '-pix_fmt', 'rgb24',
+            '-r', str(self.fps),
+            '-i', '-',
+            '-c:v', codec,
             '-pix_fmt', 'yuv420p',
-            '-r', str(fps),
-            out_path
+            self.out_path
         ]
         try:
-            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        except Exception:
-            # Try without libx264
-            cmd[cmd.index('-c:v') + 1] = 'libopenh264' if sys.platform == 'win32' else 'h264'
-            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.handle = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        except Exception as e:
+            sys.stderr.write(f"[RobustVideoWriter] FFmpeg pipe launch failed: {e}\n")
+            self.mode = 'fallback_direct'
+
+    def write_frame(self, rgb_frame):
+        if rgb_frame.shape[0] != self.h or rgb_frame.shape[1] != self.w:
+            rgb_frame = rgb_frame[:self.h, :self.w]
+
+        if self.mode == 'av':
+            try:
+                frame = av.VideoFrame.from_ndarray(rgb_frame, format='rgb24')
+                for packet in self.stream.encode(frame):
+                    self.handle.mux(packet)
+            except Exception as e:
+                sys.stderr.write(f"[RobustVideoWriter] PyAV encode error: {e}. Switching to FFmpeg pipe.\n")
+                try:
+                    self.handle.close()
+                except Exception:
+                    pass
+                self._init_ffmpeg_pipe()
+                if self.mode == 'ffmpeg' and self.handle and self.handle.stdin:
+                    try:
+                        self.handle.stdin.write(rgb_frame.tobytes())
+                    except Exception:
+                        pass
+        elif self.mode == 'ffmpeg' and self.handle and self.handle.stdin:
+            try:
+                self.handle.stdin.write(rgb_frame.tobytes())
+            except Exception:
+                pass
+
+    def close(self):
+        if self.mode == 'av':
+            try:
+                for packet in self.stream.encode():
+                    self.handle.mux(packet)
+                self.handle.close()
+            except Exception:
+                pass
+        elif self.mode == 'ffmpeg' and self.handle:
+            try:
+                self.handle.stdin.close()
+                self.handle.wait()
+            except Exception:
+                pass
+
+        # Final sanity check: if output video is missing or corrupt (<1KB), invoke direct FFmpeg loop filter
+        if not os.path.exists(self.out_path) or os.path.getsize(self.out_path) < 1000:
+            ffmpeg_bin = find_ffmpeg()
+            codec = 'libopenh264' if sys.platform == 'win32' and 'ffmpeg.exe' in ffmpeg_bin else 'libx264'
+            cmd = [
+                ffmpeg_bin, '-y',
+                '-loop', '1',
+                '-i', self.fallback_img_path,
+                '-c:v', codec,
+                '-t', '5.0',
+                '-pix_fmt', 'yuv420p',
+                '-r', str(self.fps),
+                '-vf', f'scale={self.w}:{self.h}',
+                self.out_path
+            ]
+            try:
+                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception as e:
+                sys.stderr.write(f"[RobustVideoWriter] Direct fallback failed: {e}\n")
 
 def generate_idle_video(idle, speaking, blink, w, h, fps=30, duration=6.0):
     total_frames = int(fps * duration)
     print(f"Generating Idle Video Loop: {total_frames} frames ({duration}s @ {fps}fps)...")
     
-    writer = open_video_writer(IDLE_OUT_PATH, w, h, fps)
+    writer = RobustVideoWriter(IDLE_OUT_PATH, w, h, fps, IDLE_IMG_PATH)
     center = (w / 2.0, h * 0.45)
     blink_times = [1.8, 4.2]
     
@@ -279,9 +331,9 @@ def generate_idle_video(idle, speaking, blink, w, h, fps=30, duration=6.0):
             
         transformed = apply_affine_motion(frame_base, dx, dy, angle, scale, center)
         rgb = cv2.cvtColor(transformed, cv2.COLOR_BGR2RGB) if HAVE_CV2 else transformed
-        write_video_frame(writer, rgb)
+        writer.write_frame(rgb)
         
-    close_video_writer(writer, IDLE_OUT_PATH, IDLE_IMG_PATH, duration, fps)
+    writer.close()
     if os.path.exists(IDLE_OUT_PATH):
         print(f"✅ Generated: {IDLE_OUT_PATH} ({os.path.getsize(IDLE_OUT_PATH)} bytes)")
 
@@ -289,7 +341,7 @@ def generate_talking_video(idle, speaking, blink, w, h, fps=30, duration=4.0):
     total_frames = int(fps * duration)
     print(f"Generating Talking Video Loop: {total_frames} frames ({duration}s @ {fps}fps)...")
     
-    writer = open_video_writer(TALKING_OUT_PATH, w, h, fps)
+    writer = RobustVideoWriter(TALKING_OUT_PATH, w, h, fps, SPEAKING_IMG_PATH)
     center = (w / 2.0, h * 0.45)
     blink_times = [1.2, 2.9]
     
@@ -331,9 +383,9 @@ def generate_talking_video(idle, speaking, blink, w, h, fps=30, duration=4.0):
             
         transformed = apply_affine_motion(frame_base, dx, dy, angle, scale, center)
         rgb = cv2.cvtColor(transformed, cv2.COLOR_BGR2RGB) if HAVE_CV2 else transformed
-        write_video_frame(writer, rgb)
+        writer.write_frame(rgb)
         
-    close_video_writer(writer, TALKING_OUT_PATH, SPEAKING_IMG_PATH, duration, fps)
+    writer.close()
     if os.path.exists(TALKING_OUT_PATH):
         print(f"✅ Generated: {TALKING_OUT_PATH} ({os.path.getsize(TALKING_OUT_PATH)} bytes)")
 

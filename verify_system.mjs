@@ -511,6 +511,13 @@ test('Owner Studio UI: index.html has owner avatar & voice clone studio controls
   assert.ok(html.includes('btn-clone-voice'), 'index.html has Gemini Voice Replication button');
 });
 
+test('Video Generator: Even dimension alignment prevents avcodec_open2 libx264 error', () => {
+  const scriptContent = fs.readFileSync(path.join(__dirname, 'generate_avatar_videos.py'), 'utf-8');
+  assert.ok(scriptContent.includes('w = w - (w % 2)'), 'Script aligns width to even integer');
+  assert.ok(scriptContent.includes('h = h - (h % 2)'), 'Script aligns height to even integer');
+  assert.ok(scriptContent.includes('RobustVideoWriter'), 'Script uses RobustVideoWriter');
+});
+
 console.log('\n====================================================');
 console.log(`📊 TEST RESULTS: ${passedTests} PASSED, ${failedTests} FAILED`);
 console.log('====================================================\n');
