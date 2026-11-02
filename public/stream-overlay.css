@@ -1,3 +1,18 @@
+@font-face {
+  font-family: 'Prompt';
+  src: url('/fonts/prompt-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Prompt';
+  src: url('/fonts/prompt-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -14,7 +29,7 @@ body.overlay-body {
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: 'Kanit', sans-serif;
+  font-family: 'Prompt', 'Kanit', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 

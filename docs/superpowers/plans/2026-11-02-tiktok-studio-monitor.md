@@ -94,3 +94,4 @@
   - Director monitor DOM elements (teleprompter, VU meter, quick baskets, ping display)
 - [ ] Run full test suite and ensure all tests pass (>70/70 tests).
 - [ ] Commit and push to `origin/main` for automatic Render deployment.
+

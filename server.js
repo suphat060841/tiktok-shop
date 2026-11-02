@@ -723,7 +723,80 @@ function detectOrderIntent(comment) {
 }
 
 // ----------------------------------------------------
-// 4. AI Brain (Smart Director Logic)
+// 4. TikTok Community Safety & Compliance Gate (Adapted from SenRerunAI)
+// ----------------------------------------------------
+class TikTokSafetyFilter {
+  static check(text) {
+    if (!text || typeof text !== 'string') return { safe: true, text: '' };
+    const lower = text.toLowerCase();
+    const hits = [];
+
+    // 1. Off-Platform Policy (ห้ามชักชวนไปช่องทางอื่นนอก TikTok: Line, เบอร์โทร, FB, IG, โอนตรง)
+    const offplatformPatterns = [
+      /line(?:\s*id)?/i,
+      /@line/i,
+      /แอดไลน์/i,
+      /ไลน์ไอดี/i,
+      /เบอร์โทร/i,
+      /โทรมา/i,
+      /facebook/i,
+      /เฟสบุ๊ค/i,
+      /instagram/i,
+      /อินสตาแกรม/i,
+      /0[689]\d{1}[- ]?\d{3}[- ]?\d{4}/,
+      /โอนตรง/i,
+      /บัญชีส่วนตัว/i,
+      /นอกรอบ/i
+    ];
+    for (const pat of offplatformPatterns) {
+      if (pat.test(lower)) {
+        hits.push({ rule: 'offplatform', label: 'ช่องทางนอก TikTok / คำต้องห้าม' });
+        break;
+      }
+    }
+
+    // 2. Medical / Health Exaggerations (ห้ามอวดอ้างสรรพคุณทางยา เกินจริง ขาวไว หายขาด)
+    const medicalPatterns = [
+      /รักษาโรค/i,
+      /หายขาด/i,
+      /ขาวไวใน\s*\d+\s*วัน/i,
+      /ลดน้ำหนัก\s*\d+\s*โล/i,
+      /อย\.ปลอม/i,
+      /ต้านมะเร็ง/i
+    ];
+    for (const pat of medicalPatterns) {
+      if (pat.test(lower)) {
+        hits.push({ rule: 'medical', label: 'อ้างสรรพคุณทางการแพทย์เกินจริง' });
+        break;
+      }
+    }
+
+    // 3. Expert / False Authority (ห้ามอ้างตัวเป็นแพทย์/ผู้เชี่ยวชาญ)
+    const expertPatterns = [
+      /หมอการันตี/i,
+      /แพทย์รับรอง/i,
+      /เภสัชกรแนะนำ/i
+    ];
+    for (const pat of expertPatterns) {
+      if (pat.test(lower)) {
+        hits.push({ rule: 'expert', label: 'อ้างตัวเป็นหมอ/ผู้เชี่ยวชาญ' });
+        break;
+      }
+    }
+
+    if (hits.length > 0) {
+      return {
+        safe: false,
+        hits,
+        sanitized: 'สั่งซื้อผ่านตะกร้าในไลฟ์ TikTok ได้อย่างปลอดภัย มีการรับประกันสินค้าพร้อมโปรส่งฟรีนะคะ'
+      };
+    }
+    return { safe: true, hits: [], sanitized: text };
+  }
+}
+
+// ----------------------------------------------------
+// 5. AI Brain (Smart Director Logic)
 // ----------------------------------------------------
 class AIBrain {
   constructor(productMgr, faqMgr, mixer) {
@@ -856,6 +929,15 @@ class AIBrain {
       const pinned = this.products.getPinned();
       sessionTracker.recordOrder(user, pinned?.id ?? null, pinned?.title ?? '', comment);
       io.emit('session_order', sessionTracker.getStats());
+    }
+
+    // 0. TikTok Community Policy & Safety Gate (Adapted from SenRerunAI)
+    const safety = TikTokSafetyFilter.check(comment);
+    if (!safety.safe) {
+      const ctx = this.getPersonaContext();
+      const resp = `คุณ ${user} ${ctx.call} เพื่อความปลอดภัยของลูกค้า สั่งซื้อผ่านระบบตะกร้าในไลฟ์ TikTok ได้โดยตรง มีการรับประกันและโปรส่งฟรี${ctx.softEnd}`;
+      this.enqueue(resp, 1, { type: 'safety_gate', user, comment, rules: safety.hits });
+      return resp;
     }
 
     // 1. Check FAQ Rules
@@ -1466,6 +1548,7 @@ export {
   sessionTracker,
   flashSaleManager,
   GeminiAIBrain,
-  geminiAI
+  geminiAI,
+  TikTokSafetyFilter
 };
 

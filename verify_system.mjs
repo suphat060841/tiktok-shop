@@ -448,6 +448,37 @@ test('Director Monitor API: /api/stream/health returns valid health and avatar s
   assert.ok(typeof responseData.uptimeSeconds === 'number');
 });
 
+test('TikTokSafetyFilter: blocks off-platform contact attempts (Line, phone, facebook)', () => {
+  const lineCheck = serverModule.TikTokSafetyFilter.check('แอดไลน์มาที่ @shop123 หน่อยครับ');
+  assert.strictEqual(lineCheck.safe, false, 'Line invitation detected as unsafe');
+  assert.strictEqual(lineCheck.hits[0].rule, 'offplatform');
+
+  const phoneCheck = serverModule.TikTokSafetyFilter.check('ขอเบอร์โทรติดต่อหน่อย 081-234-5678');
+  assert.strictEqual(phoneCheck.safe, false, 'Phone number detected as unsafe');
+
+  const fbCheck = serverModule.TikTokSafetyFilter.check('ทัก facebook หรือยัง');
+  assert.strictEqual(fbCheck.safe, false, 'Facebook contact detected as unsafe');
+});
+
+test('TikTokSafetyFilter: blocks prohibited medical claims', () => {
+  const medCheck = serverModule.TikTokSafetyFilter.check('ตัวนี้รักษาโรคหายขาดไหมครับ');
+  assert.strictEqual(medCheck.safe, false, 'Medical claim detected as unsafe');
+  assert.strictEqual(medCheck.hits[0].rule, 'medical');
+});
+
+test('TikTokSafetyFilter: allows clean questions through', () => {
+  const cleanCheck = serverModule.TikTokSafetyFilter.check('เสื้อตัวนี้มีไซส์ L ไหมครับ ส่งวันไหน');
+  assert.strictEqual(cleanCheck.safe, true, 'Clean shopping inquiry is safe');
+});
+
+test('Typography Assets: Extracted Thai WOFF2 fonts present and linked', () => {
+  const fontDir = path.join(__dirname, 'public/fonts');
+  assert.ok(fs.existsSync(path.join(fontDir, 'prompt-500.woff2')), 'prompt-500.woff2 exists');
+  assert.ok(fs.existsSync(path.join(fontDir, 'sarabun-400.woff2')), 'sarabun-400.woff2 exists');
+  const css = fs.readFileSync(path.join(__dirname, 'public/style.css'), 'utf-8');
+  assert.ok(css.includes('prompt-500.woff2'), 'style.css imports prompt-500.woff2');
+});
+
 console.log('\n====================================================');
 console.log(`📊 TEST RESULTS: ${passedTests} PASSED, ${failedTests} FAILED`);
 console.log('====================================================\n');
