@@ -1253,5 +1253,271 @@ body.dashboard-body {
   padding: 16px 0;
 }
 
+/* ============================================================
+   All-in-One Live Director Monitor Console Styles
+   ============================================================ */
+.director-console {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) auto minmax(260px, 320px);
+  gap: 16px;
+  align-items: start;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+@media (max-width: 1200px) {
+  .director-console {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  .director-rail {
+    width: 100%;
+    max-width: 480px;
+  }
+}
+
+.director-card {
+  background: var(--card-bg, rgba(26, 29, 45, 0.75));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 12px);
+  padding: 14px 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.director-card-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-main, #ffffff);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Stream Health Grid */
+.health-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.health-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.health-label {
+  font-size: 0.72rem;
+  color: var(--text-dim, #94a3b8);
+}
+
+.health-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+.health-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  width: fit-content;
+}
+.health-badge.healthy {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.health-badge.info {
+  background: rgba(14, 165, 233, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.4);
+}
+
+/* Live Teleprompter */
+.teleprompter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.speech-status-dot {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.speech-status-dot.idle {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+.speech-status-dot.speaking {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  animation: pulse-dot 1s infinite alternate;
+}
+
+@keyframes pulse-dot {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.teleprompter-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 80px;
+  max-height: 120px;
+  overflow-y: auto;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.teleprompter-box.speaking {
+  border-color: #f43f5e;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.3);
+}
+
+.teleprompter-text {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+/* Audio VU Meter */
+.vu-meter-container {
+  margin-top: 12px;
+}
+.vu-meter-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+.vu-meter-bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.vu-meter-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #10b981 0%, #10b981 65%, #f59e0b 80%, #ef4444 100%);
+  transition: width 0.08s ease;
+}
+
+/* Quick Basket Items */
+.quick-baskets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.quick-basket-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.quick-basket-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.quick-basket-item.pinned {
+  border-color: #f43f5e;
+  background: rgba(244, 63, 94, 0.12);
+}
+
+.quick-basket-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-right: 8px;
+}
+.quick-basket-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quick-basket-price {
+  font-size: 0.75rem;
+  color: #10b981;
+  font-weight: 700;
+}
+
+.quick-basket-pin-btn {
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* Flash Sale Cockpit */
+.flash-cockpit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.flash-badge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.flash-badge.active {
+  background: rgba(244, 63, 94, 0.2);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  animation: flash-pulse 1s infinite alternate;
+}
+.flash-badge.inactive {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+.flash-countdown-display {
+  font-family: monospace;
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+  color: #f43f5e;
+  margin: 8px 0;
+}
+.flash-quick-btns {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* Director SFX Grid */
+.director-sfx-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
 
 

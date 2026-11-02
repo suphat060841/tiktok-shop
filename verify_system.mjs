@@ -404,6 +404,50 @@ test('Avatar Video Engine: MP4 assets exist, valid size, and seamless loop suppo
   assert.ok(overlayJs.includes('updateVideoAvatarState'), 'stream-overlay.js has updateVideoAvatarState');
 });
 
+test('Director Monitor: HTML structure contains 3-column director console and cockpit controls', () => {
+  const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf-8');
+  assert.ok(html.includes('director-console'), 'HTML contains director-console');
+  assert.ok(html.includes('director-health-badge'), 'HTML contains director-health-badge');
+  assert.ok(html.includes('director-ping-val'), 'HTML contains director-ping-val');
+  assert.ok(html.includes('teleprompter-text'), 'HTML contains teleprompter-text');
+  assert.ok(html.includes('vu-meter-fill'), 'HTML contains vu-meter-fill');
+  assert.ok(html.includes('director-quick-baskets'), 'HTML contains director-quick-baskets');
+  assert.ok(html.includes('director-flash-badge'), 'HTML contains director-flash-badge');
+  assert.ok(html.includes('director-btn-emergency-stop'), 'HTML contains director-btn-emergency-stop');
+});
+
+test('Director Monitor: CSS contains director console, teleprompter and VU meter styling', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'public/style.css'), 'utf-8');
+  assert.ok(css.includes('.director-console'), 'CSS has .director-console');
+  assert.ok(css.includes('.vu-meter-fill'), 'CSS has .vu-meter-fill');
+  assert.ok(css.includes('.quick-basket-item'), 'CSS has .quick-basket-item');
+  assert.ok(css.includes('.teleprompter-box'), 'CSS has .teleprompter-box');
+});
+
+test('Director Monitor: app.js contains VU meter, ping telemetry and quick basket logic', () => {
+  const js = fs.readFileSync(path.join(__dirname, 'public/app.js'), 'utf-8');
+  assert.ok(js.includes('startVuMeter'), 'app.js has startVuMeter');
+  assert.ok(js.includes('renderDirectorQuickBaskets'), 'app.js has renderDirectorQuickBaskets');
+  assert.ok(js.includes('ping_check'), 'app.js has ping_check');
+  assert.ok(js.includes('checkDirectorStreamHealth'), 'app.js has checkDirectorStreamHealth');
+});
+
+test('Director Monitor API: /api/stream/health returns valid health and avatar state', () => {
+  const route = serverModule.app._router.stack.find(r => r.route && r.route.path === '/api/stream/health');
+  assert.ok(route, 'Route /api/stream/health exists in app router');
+  const handler = route.route.stack[0].handle;
+  let responseData = null;
+  const mockReq = {};
+  const mockRes = {
+    json: (d) => { responseData = d; return mockRes; },
+    status: () => mockRes
+  };
+  handler(mockReq, mockRes);
+  assert.strictEqual(responseData.status, 'healthy');
+  assert.strictEqual(responseData.avatarMode, 'video_hd');
+  assert.ok(typeof responseData.uptimeSeconds === 'number');
+});
+
 console.log('\n====================================================');
 console.log(`📊 TEST RESULTS: ${passedTests} PASSED, ${failedTests} FAILED`);
 console.log('====================================================\n');

@@ -1036,6 +1036,14 @@ io.on('connection', (socket) => {
       username: currentTikTokUsername
     }
   });
+
+  // Director Monitor Real-time Ping Latency
+  socket.on('ping_check', (clientTime) => {
+    socket.emit('pong_check', {
+      clientTime,
+      serverTime: Date.now()
+    });
+  });
 });
 
 // Watch speech finish to trigger queue
@@ -1406,6 +1414,21 @@ app.post('/api/ai/generate-script', (req, res) => {
   };
 
   res.json({ success: true, scripts });
+});
+
+// Stream Health & Director Monitor API
+app.get('/api/stream/health', (req, res) => {
+  const hasVideoIdle = fs.existsSync(path.join(__dirname, 'public', 'assets', 'avatar_idle.mp4'));
+  const hasVideoTalk = fs.existsSync(path.join(__dirname, 'public', 'assets', 'avatar_talking.mp4'));
+  res.json({
+    status: 'healthy',
+    uptimeSeconds: Math.floor(process.uptime()),
+    activeSockets: io.engine.clientsCount,
+    tiktokConnected: !!(tiktokConnection && tiktokConnection.isConnected),
+    avatarMode: (hasVideoIdle && hasVideoTalk) ? 'video_hd' : 'canvas_2d',
+    memoryUsageMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    timestamp: Date.now()
+  });
 });
 
 // Stream Overlay page route

@@ -217,7 +217,7 @@
         </div>
       </div>
 
-      <!-- Tab 2: 9:16 Studio Output Monitor -->
+      <!-- Tab 2: 9:16 Studio Output Monitor & Live Director Cockpit -->
       <div class="tab-pane" id="tab-monitor">
         <div class="monitor-toolbar">
           <div class="obs-copy-box">
@@ -225,12 +225,104 @@
             <input type="text" id="obs-url-input" value="http://localhost:3000/stream-overlay" readonly>
             <button id="btn-copy-obs" class="btn btn-sm btn-primary">คัดลอก URL</button>
           </div>
-          <div class="monitor-note">แนะนำตั้งค่าขนาดใน OBS เป็น <strong>1080 x 1920</strong> (สัดส่วน 9:16 แนวตั้ง)</div>
+          <div class="monitor-note">แนะนำตั้งค่าขนาดใน TikTok LIVE Studio เป็น <strong>1080 x 1920</strong> (สัดส่วน 9:16 แนวตั้ง)</div>
         </div>
-        <div class="monitor-wrapper">
-          <div class="phone-frame">
-            <iframe src="/stream-overlay?muted=1" id="monitor-iframe" title="Stream Overlay Preview"></iframe>
+
+        <!-- 3-Column Director Console -->
+        <div class="director-console">
+          
+          <!-- Left Rail: Stream Diagnostics & Teleprompter -->
+          <div class="director-rail director-rail-left">
+            <!-- Stream Health Card -->
+            <div class="director-card">
+              <h4 class="director-card-title">📡 สุขภาพสัญญาณสตรีม (Stream Health)</h4>
+              <div class="health-grid">
+                <div class="health-item">
+                  <span class="health-label">สัญญาณเซิร์ฟเวอร์</span>
+                  <span class="health-badge healthy" id="director-health-badge">🟢 สมบูรณ์</span>
+                </div>
+                <div class="health-item">
+                  <span class="health-label">ความหน่วง (Latency)</span>
+                  <span class="health-val" id="director-ping-val"><span id="val-ping">--</span> ms</span>
+                </div>
+                <div class="health-item">
+                  <span class="health-label">โหมด Avatar</span>
+                  <span class="health-badge info" id="director-avatar-mode">🎥 Video 60FPS</span>
+                </div>
+                <div class="health-item">
+                  <span class="health-label">เฟรมเรตสตรีม</span>
+                  <span class="health-val" id="director-fps-val">60 FPS</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Live Speech Teleprompter -->
+            <div class="director-card mt-3">
+              <div class="teleprompter-header">
+                <h4 class="director-card-title">🎙️ บทพูดสด (Live Teleprompter)</h4>
+                <span class="speech-status-dot idle" id="teleprompter-dot">พร้อมพูด</span>
+              </div>
+              <div class="teleprompter-box" id="teleprompter-box">
+                <p id="teleprompter-text" class="teleprompter-text">AI พร้อมพูดคุยและแนะนำสินค้าเมื่อมีผู้ชมหรือคอมเมนต์เข้ามา...</p>
+              </div>
+
+              <!-- Audio VU Meter -->
+              <div class="vu-meter-container">
+                <div class="vu-meter-labels">
+                  <span>ระดับเสียงไมค์ AI (VU Meter)</span>
+                  <span id="vu-meter-db">-∞ dB</span>
+                </div>
+                <div class="vu-meter-bar">
+                  <div class="vu-meter-fill" id="vu-meter-fill" style="width: 0%;"></div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          <!-- Center Screen: 9:16 Phone Frame Preview -->
+          <div class="director-center">
+            <div class="phone-frame">
+              <iframe src="/stream-overlay?muted=1" id="monitor-iframe" title="Stream Overlay Preview"></iframe>
+            </div>
+          </div>
+
+          <!-- Right Rail: Fast-Action Cockpit -->
+          <div class="director-rail director-rail-right">
+            <!-- Quick Basket Selector -->
+            <div class="director-card">
+              <h4 class="director-card-title">📌 สลับปักหมุดตะกร้าด่วน (Quick Basket)</h4>
+              <div class="quick-baskets-list" id="director-quick-baskets">
+                <!-- Injected via app.js -->
+              </div>
+            </div>
+
+            <!-- Flash Sale Mini-Cockpit -->
+            <div class="director-card mt-3">
+              <div class="flash-cockpit-header">
+                <h4 class="director-card-title">⚡ ควบคุม Flash Sale</h4>
+                <span class="flash-badge inactive" id="director-flash-badge">ปิดอยู่</span>
+              </div>
+              <div class="flash-countdown-display" id="director-flash-time">--:--</div>
+              <div class="flash-quick-btns">
+                <button class="btn btn-sm btn-accent" id="director-btn-flash-3m">3 นาที</button>
+                <button class="btn btn-sm btn-accent" id="director-btn-flash-5m">5 นาที</button>
+                <button class="btn btn-sm btn-danger" id="director-btn-flash-stop">⏹️ หยุด</button>
+              </div>
+            </div>
+
+            <!-- Director SFX & Emergency Action -->
+            <div class="director-card mt-3">
+              <h4 class="director-card-title">🚨 ปุ่มควบคุมฉุกเฉิน & Sound FX</h4>
+              <div class="director-sfx-grid">
+                <button class="btn btn-sm btn-sfx" data-sfx="ding">🔔 กระดิ่ง</button>
+                <button class="btn btn-sm btn-sfx" data-sfx="cash">💰 เงินเข้า</button>
+                <button class="btn btn-sm btn-sfx" data-sfx="cheer">🎉 ปรบมือ</button>
+                <button class="btn btn-sm btn-sfx" data-sfx="bell">🛎️ กริ่งเตือน</button>
+              </div>
+              <button id="director-btn-emergency-stop" class="btn btn-danger-full mt-2">⏹️ ตัดเสียงพูดฉุกเฉิน (Emergency Mute)</button>
+            </div>
+          </div>
+
         </div>
       </div>
 

@@ -220,11 +220,36 @@ document.addEventListener('click', () => {
 socket.on('tts_event', event => {
   if (event.event === 'playing' && event.data) {
     playDashboardSpeech(event.data);
+
+    // Update Director Teleprompter & VU Meter
+    const tText = document.getElementById('teleprompter-text');
+    const tDot = document.getElementById('teleprompter-dot');
+    const tBox = document.getElementById('teleprompter-box');
+    if (tText && event.data.text) {
+      tText.textContent = event.data.text;
+    }
+    if (tDot) {
+      tDot.className = 'speech-status-dot speaking';
+      tDot.textContent = 'กำลังพูด...';
+    }
+    if (tBox) tBox.classList.add('speaking');
+    startVuMeter();
+
   } else if (event.event === 'finished' || event.event === 'stopped') {
     if (dashboardSpeechAudio) {
       dashboardSpeechAudio.pause();
       dashboardSpeechAudio = null;
     }
+
+    // Reset Director Teleprompter & VU Meter
+    const tDot = document.getElementById('teleprompter-dot');
+    const tBox = document.getElementById('teleprompter-box');
+    if (tDot) {
+      tDot.className = 'speech-status-dot idle';
+      tDot.textContent = 'พร้อมพูด';
+    }
+    if (tBox) tBox.classList.remove('speaking');
+    stopVuMeter();
   }
 });
 
@@ -319,6 +344,7 @@ function renderPinnedProduct() {
     pinnedOrig.textContent = '';
     pinnedStock.textContent = 'เหลือ 0 ชิ้น';
     pinnedPromo.textContent = '';
+    renderDirectorQuickBaskets();
     return;
   }
 
@@ -327,11 +353,13 @@ function renderPinnedProduct() {
   pinnedOrig.textContent = pinnedProduct.originalPrice ? `฿${pinnedProduct.originalPrice}` : '';
   pinnedStock.textContent = `เหลือ ${pinnedProduct.stock !== undefined ? pinnedProduct.stock : 50} ชิ้น`;
   pinnedPromo.textContent = pinnedProduct.promotion || 'โปรโมชั่นพิเศษในไลฟ์';
+  renderDirectorQuickBaskets();
 }
 
 function renderProductsList() {
   productList.innerHTML = '';
   productCount.textContent = productsList.length;
+  renderDirectorQuickBaskets();
 
   productsList.forEach(p => {
     const isPinned = pinnedProduct && pinnedProduct.id === p.id;
@@ -900,6 +928,9 @@ const btnFlashStop = document.getElementById('btn-flash-stop');
 const selectFlashDuration = document.getElementById('flash-duration');
 
 function updateFlashSaleUI(state) {
+  const dirBadge = document.getElementById('director-flash-badge');
+  const dirTime = document.getElementById('director-flash-time');
+
   if (!state || !state.active || state.remainingSeconds <= 0) {
     if (flashSetupRow) flashSetupRow.classList.remove('hidden');
     if (flashActiveRow) flashActiveRow.classList.add('hidden');
@@ -907,6 +938,11 @@ function updateFlashSaleUI(state) {
       flashBadgeStatus.textContent = 'ปิดอยู่';
       flashBadgeStatus.className = 'status-pill-inactive';
     }
+    if (dirBadge) {
+      dirBadge.textContent = 'ปิดอยู่';
+      dirBadge.className = 'flash-badge inactive';
+    }
+    if (dirTime) dirTime.textContent = '--:--';
   } else {
     if (flashSetupRow) flashSetupRow.classList.add('hidden');
     if (flashActiveRow) flashActiveRow.classList.remove('hidden');
@@ -914,10 +950,17 @@ function updateFlashSaleUI(state) {
       flashBadgeStatus.textContent = 'กำลังทำงาน 🔥';
       flashBadgeStatus.className = 'status-pill-active';
     }
+    const m = Math.floor(state.remainingSeconds / 60).toString().padStart(2, '0');
+    const s = (state.remainingSeconds % 60).toString().padStart(2, '0');
     if (flashDashboardTimer) {
-      const m = Math.floor(state.remainingSeconds / 60).toString().padStart(2, '0');
-      const s = (state.remainingSeconds % 60).toString().padStart(2, '0');
       flashDashboardTimer.textContent = `${m}:${s}`;
+    }
+    if (dirBadge) {
+      dirBadge.textContent = '🔥 กำลังจัด';
+      dirBadge.className = 'flash-badge active';
+    }
+    if (dirTime) {
+      dirTime.textContent = `${m}:${s}`;
     }
   }
 }
@@ -1014,6 +1057,175 @@ if (quickBtnFlash) {
     }
   });
 }
+
+// ==========================================
+// 9. All-in-One Live Director Monitor System
+// ==========================================
+
+// VU Meter Controller
+let vuAnimationId = null;
+
+function startVuMeter() {
+  const vuFill = document.getElementById('vu-meter-fill');
+  const vuDb = document.getElementById('vu-meter-db');
+  if (!vuFill || !vuDb) return;
+  if (vuAnimationId) cancelAnimationFrame(vuAnimationId);
+
+  function animate() {
+    // Generate realistic speech modulation between 55% and 95%
+    const level = 55 + Math.random() * 38;
+    const db = (-12 + (level / 100) * 11).toFixed(1);
+    vuFill.style.width = `${level}%`;
+    vuDb.textContent = `${db} dB`;
+    vuAnimationId = requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function stopVuMeter() {
+  if (vuAnimationId) {
+    cancelAnimationFrame(vuAnimationId);
+    vuAnimationId = null;
+  }
+  const vuFill = document.getElementById('vu-meter-fill');
+  const vuDb = document.getElementById('vu-meter-db');
+  if (vuFill) vuFill.style.width = '0%';
+  if (vuDb) vuDb.textContent = '-∞ dB';
+}
+
+// Director Ping & Health
+let directorPingTimer = null;
+
+function startDirectorPing() {
+  if (directorPingTimer) clearInterval(directorPingTimer);
+  directorPingTimer = setInterval(() => {
+    if (socket && socket.connected) {
+      socket.emit('ping_check', Date.now());
+    }
+  }, 3000);
+}
+
+socket.on('pong_check', data => {
+  if (data && data.clientTime) {
+    const rtt = Math.max(1, Date.now() - data.clientTime);
+    const pingVal = document.getElementById('val-ping');
+    if (pingVal) pingVal.textContent = rtt;
+  }
+});
+
+async function checkDirectorStreamHealth() {
+  try {
+    const res = await fetch('/api/stream/health');
+    const data = await res.json();
+    const badge = document.getElementById('director-health-badge');
+    const avatarMode = document.getElementById('director-avatar-mode');
+    if (badge) {
+      badge.textContent = data.status === 'healthy' ? '🟢 สมบูรณ์' : '🟡 มีคำเตือน';
+    }
+    if (avatarMode) {
+      avatarMode.textContent = data.avatarMode === 'video_hd' ? '🎥 Video 60FPS' : '🎨 Canvas 2D';
+    }
+  } catch (e) {
+    const badge = document.getElementById('director-health-badge');
+    if (badge) badge.textContent = '🔴 ตัดการเชื่อมต่อ';
+  }
+}
+
+// Quick Baskets Renderer for Director Rail
+function renderDirectorQuickBaskets() {
+  const container = document.getElementById('director-quick-baskets');
+  if (!container) return;
+  if (!productsList || productsList.length === 0) {
+    container.innerHTML = '<div class="feed-empty-hint">ไม่มีสินค้าในตะกร้า</div>';
+    return;
+  }
+
+  container.innerHTML = productsList.map(p => {
+    const isPinned = pinnedProduct && String(pinnedProduct.id) === String(p.id);
+    return `
+      <div class="quick-basket-item ${isPinned ? 'pinned' : ''}" data-id="${p.id}">
+        <div class="quick-basket-info">
+          <span class="quick-basket-title">ตะกร้า #${p.id} ${escapeHtml(p.title)}</span>
+          <span class="quick-basket-price">฿${p.price}</span>
+        </div>
+        <button class="btn btn-sm ${isPinned ? 'btn-accent' : 'btn-outline-primary'} quick-basket-pin-btn" data-pin-id="${p.id}">
+          ${isPinned ? '📌 ปักหมุดอยู่' : 'ปักหมุด'}
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+// Quick Basket Click Delegation
+const quickBasketsContainer = document.getElementById('director-quick-baskets');
+if (quickBasketsContainer) {
+  quickBasketsContainer.addEventListener('click', e => {
+    const pinBtn = e.target.closest('[data-pin-id]');
+    const item = e.target.closest('.quick-basket-item');
+    const id = pinBtn ? pinBtn.dataset.pinId : (item ? item.dataset.id : null);
+    if (id) {
+      fetch(`/api/products/${id}/pin`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.product) {
+            pinnedProduct = data.product;
+            renderPinnedProduct();
+            renderProductsList();
+          }
+        })
+        .catch(err => console.error('[Director] Pin failed:', err));
+    }
+  });
+}
+
+// Flash Sale Mini-Cockpit Buttons
+const btnFlash3m = document.getElementById('director-btn-flash-3m');
+const btnFlash5m = document.getElementById('director-btn-flash-5m');
+const btnFlashStopDir = document.getElementById('director-btn-flash-stop');
+
+if (btnFlash3m) {
+  btnFlash3m.addEventListener('click', () => {
+    const pid = pinnedProduct?.id || 1;
+    fetch('/api/flash-sale/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ durationMinutes: 3, productId: pid })
+    }).then(r => r.json()).then(res => { if (res.state) updateFlashSaleUI(res.state); });
+  });
+}
+
+if (btnFlash5m) {
+  btnFlash5m.addEventListener('click', () => {
+    const pid = pinnedProduct?.id || 1;
+    fetch('/api/flash-sale/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ durationMinutes: 5, productId: pid })
+    }).then(r => r.json()).then(res => { if (res.state) updateFlashSaleUI(res.state); });
+  });
+}
+
+if (btnFlashStopDir) {
+  btnFlashStopDir.addEventListener('click', () => {
+    fetch('/api/flash-sale/stop', { method: 'POST' })
+      .then(r => r.json())
+      .then(() => updateFlashSaleUI({ active: false }));
+  });
+}
+
+// Director Emergency Mute Button
+const dirEmergencyBtn = document.getElementById('director-btn-emergency-stop');
+if (dirEmergencyBtn) {
+  dirEmergencyBtn.addEventListener('click', () => {
+    fetch('/api/tts/stop', { method: 'POST' });
+    stopVuMeter();
+  });
+}
+
+// Start Director Ping & Initial Health check on load
+startDirectorPing();
+checkDirectorStreamHealth();
+renderDirectorQuickBaskets();
 
 
 
