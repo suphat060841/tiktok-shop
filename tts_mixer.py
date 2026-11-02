@@ -173,10 +173,56 @@ async def handle_speak(data):
             # File exists, stream to browser
             send_event('speech_started', id=speech_id, text=text, audio_url=audio_url, played_locally=False)
             duration = max(2.0, min(15.0, len(text) * 0.12))
+            is_speech_active = True
             await asyncio.sleep(duration)
+            is_speech_active = False
             send_event('speech_finished', id=speech_id)
         else:
             send_event('speech_fallback', id=speech_id, text=text)
+
+async def handle_play_file(data):
+    global is_speech_active
+    filepath = data.get('filepath', '')
+    text = data.get('text', '')
+    speech_id = data.get('id', str(time.time()))
+    vol = float(data.get('volume', 1.0))
+
+    if not os.path.exists(filepath):
+        send_event('speech_fallback', id=speech_id, text=text)
+        return
+
+    filename = os.path.basename(filepath)
+    audio_url = f"/cache/{filename}"
+
+    is_dummy = os.environ.get('SDL_AUDIODRIVER') == 'dummy'
+    played_locally = False
+
+    if SPEECH_CHANNEL and not is_dummy:
+        try:
+            sound = pygame.mixer.Sound(filepath)
+            SPEECH_CHANNEL.stop()
+            SPEECH_CHANNEL.set_volume(max(0.0, min(1.0, vol)))
+            is_speech_active = True
+            SPEECH_CHANNEL.play(sound)
+            played_locally = True
+            send_event('speech_started', id=speech_id, text=text, audio_url=audio_url, played_locally=True)
+
+            while SPEECH_CHANNEL.get_busy():
+                await asyncio.sleep(0.04)
+
+            is_speech_active = False
+            send_event('speech_finished', id=speech_id)
+        except Exception as e:
+            is_speech_active = False
+            sys.stderr.write(f"[tts_mixer] Play file error: {e}\n")
+
+    if not played_locally:
+        send_event('speech_started', id=speech_id, text=text, audio_url=audio_url, played_locally=False)
+        duration = max(2.0, min(15.0, len(text) * 0.12))
+        is_speech_active = True
+        await asyncio.sleep(duration)
+        is_speech_active = False
+        send_event('speech_finished', id=speech_id)
 
 def main():
     global bgm_sound, bgm_enabled, target_bgm_volume, is_speech_active
@@ -212,6 +258,12 @@ def main():
             if command == 'speak':
                 try:
                     asyncio.run(handle_speak(cmd_data))
+                except Exception as e:
+                    send_event('speech_fallback', id=cmd_data.get('id', ''), text=cmd_data.get('text', ''), error=str(e))
+
+            elif command == 'play_audio_file':
+                try:
+                    asyncio.run(handle_play_file(cmd_data))
                 except Exception as e:
                     send_event('speech_fallback', id=cmd_data.get('id', ''), text=cmd_data.get('text', ''), error=str(e))
 

@@ -66,6 +66,7 @@
       <!-- Left Panel Navigation Tabs -->
       <div class="panel-tab-nav">
         <button class="panel-tab-btn active" data-left-tab="left-tab-ai">🌸 แม่ค้า AI & กฎไลฟ์</button>
+        <button class="panel-tab-btn" data-left-tab="left-tab-owner">👤 โคลนเจ้าของร้าน (30 FPS)</button>
         <button class="panel-tab-btn" data-left-tab="left-tab-sound">🎵 สตูดิโอเสียง & พูดสด</button>
       </div>
 
@@ -137,6 +138,85 @@
               <span class="toggle-text">🤖 Gemini AI ตอบคำถามนอกเหนือ FAQ อัตโนมัติ</span>
             </label>
           </div>
+        </div>
+      </div>
+
+      <!-- Left Tab: Owner AI Avatar & Voice Clone Studio (30 FPS) -->
+      <div class="left-tab-pane hidden" id="left-tab-owner">
+        <!-- Owner Face & 30 FPS Video Engine -->
+        <div class="glass-card mb-3">
+          <div class="d-flex justify-between align-center mb-2">
+            <h2 class="card-title mb-0">📸 หน้าเจ้าของร้าน (30 FPS Video)</h2>
+            <span class="badge badge-success" id="owner-fps-badge">⚡ 30 FPS Loop</span>
+          </div>
+          <p class="text-muted small mb-2">อัปโหลดรูปหน้าตรงของเจ้าของร้าน ระบบจะตัดขอบและสร้างแอนิเมชัน 30 FPS ปากขยับตามเสียงพูดอัตโนมัติ</p>
+
+          <div class="owner-preview-box mb-2">
+            <img id="owner-face-preview" src="/assets/avatar_idle.jpg" alt="Owner Preview" class="owner-avatar-thumb">
+            <div class="owner-preview-meta">
+              <span class="status-indicator online"></span>
+              <span id="owner-avatar-filename">avatar_idle.jpg</span>
+              <div class="small text-muted" id="owner-loop-info">Seamless Loop: 30 FPS H.264</div>
+            </div>
+          </div>
+
+          <input type="file" id="input-owner-face" accept="image/*" style="display:none;">
+          <div id="dropzone-owner-face" class="upload-dropzone mb-2">
+            <span class="upload-icon">📁</span>
+            <div class="upload-text">คลิกเพื่อเลือกรูป หรือลากรูปหน้าเจ้าของร้านมาวาง</div>
+            <div class="upload-hint">รองรับ JPG, PNG, WEBP (ความละเอียด 720p - 4K)</div>
+          </div>
+
+          <label class="toggle-row mb-2">
+            <input type="checkbox" id="chk-auto-morph" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">⚡ สังเคราะห์หน้าขยับปาก & กะพริบตาอัตโนมัติจากรูปเดี่ยว</span>
+          </label>
+
+          <button id="btn-render-30fps" class="btn btn-primary btn-full mb-2">
+            <span>🎬 เรนเดอร์วิดีโอ 30 FPS สำหรับขึ้นไลฟ์สด</span>
+          </button>
+          <div id="owner-render-status" class="alert-info-box small hidden"></div>
+        </div>
+
+        <!-- Owner Voice Cloning Card -->
+        <div class="glass-card mb-3">
+          <div class="d-flex justify-between align-center mb-2">
+            <h2 class="card-title mb-0">🎙️ เสียงเจ้าของร้าน (Voice Clone)</h2>
+            <span class="badge badge-warning" id="voice-source-badge">Edge TTS</span>
+          </div>
+          <p class="text-muted small mb-2">จำลองเสียงพูดของเจ้าของร้านผ่าน <strong>Gemini 3.8 Flash TTS Voice Replication</strong> เพื่อตอบลูกค้าด้วยเสียงจริง</p>
+
+          <div class="form-group mb-2">
+            <label class="form-label">โหมดเสียงพูดหลัก</label>
+            <select id="select-owner-voice-mode" class="form-select">
+              <option value="neural" selected>🌸 เสียงสังเคราะห์มาตรฐาน (เปรมวดี / นิวัฒน์)</option>
+              <option value="replicated">🎙️ เสียงโคลนของเจ้าของร้าน (Gemini 3.8 Replicated Voice)</option>
+            </select>
+          </div>
+
+          <input type="file" id="input-owner-voice" accept="audio/*" style="display:none;">
+          <div class="btn-group-row mb-2">
+            <button id="btn-record-voice" class="btn btn-outline-primary col-6">🎙️ บันทึกเสียง 15 วิ</button>
+            <button id="btn-choose-voice-file" class="btn btn-outline-secondary col-6">📁 อัปโหลดไฟล์เสียง</button>
+          </div>
+          <div id="record-status-box" class="text-center small text-muted mb-2 hidden"></div>
+
+          <button id="btn-clone-voice" class="btn btn-success btn-full mb-2">
+            <span>✨ โคลนเสียงด้วย Gemini 3.8 Voice Replication</span>
+          </button>
+          <div id="clone-status-box" class="alert-info-box small hidden"></div>
+        </div>
+
+        <!-- Test Speaking Live Card -->
+        <div class="glass-card">
+          <h2 class="card-title mb-2">🔊 ทดสอบพูดสดด้วยโมเดลเจ้าของร้าน</h2>
+          <div class="form-group mb-2">
+            <input type="text" id="input-test-speech" class="form-input" value="ยินดีต้อนรับเข้าสู่ไลฟ์ของทางร้านนะคะ สนใจชิ้นไหนจิ้มตะกร้าได้เลยค่า">
+          </div>
+          <button id="btn-test-owner-speak" class="btn btn-outline-primary btn-full">
+            <span>▶️ ทดสอบพูดสดทันที (พรีวิว 30 FPS)</span>
+          </button>
         </div>
       </div>
 

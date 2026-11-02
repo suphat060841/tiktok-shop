@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { WebcastPushConnection } from 'tiktok-live-connector/legacy';
@@ -23,7 +24,7 @@ const io = new SocketIOServer(server, {
 });
 
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '35mb' }));
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({ error: 'Invalid JSON payload' });
@@ -55,7 +56,11 @@ function loadConfig() {
     autoSfxOnGift: true,
     autoSfxOnPin: true,
     geminiEnabled: false,
-    geminiModel: 'gemini-2.0-flash'
+    geminiModel: 'gemini-3.8-flash',
+    voice_mode: 'neural', // 'neural' or 'replicated'
+    replicated_voice_id: null,
+    avatar_mode: 'video_hd',
+    avatar_fps: 30
   };
 
   try {
@@ -342,6 +347,86 @@ class GeminiAIBrain {
       console.warn('[GeminiAI] API call failed (safe fallback):', e.message);
       return null;
     }
+  }
+
+  async replicateVoice(sourceAudioB64, consentAudioB64, displayName = 'Shop Owner') {
+    if (!this.ai || !this.apiKey) {
+      throw new Error('Gemini API key is not configured');
+    }
+    const voice = await this.ai.voices.create({
+      store: true,
+      voice: {
+        model: 'gemini-3.8-flash-tts',
+        type: 'replicated',
+        display_name: displayName,
+        replicated: {
+          source_audio: {
+            mime_type: 'audio/wav',
+            data: sourceAudioB64
+          },
+          consent_audio: {
+            mime_type: 'audio/wav',
+            data: consentAudioB64 || sourceAudioB64
+          }
+        }
+      }
+    });
+    return voice.id;
+  }
+
+  async synthesizeReplicated(text, voiceId) {
+    if (!this.ai || !this.apiKey || !voiceId) return null;
+    const clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*#_~`]/g, '').trim();
+    if (!clean) return null;
+
+    const hash = crypto.createHash('md5').update(`gemini_${voiceId}_${clean}`).digest('hex');
+    const cacheDir = path.join(__dirname, 'cache');
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    const outPath = path.join(cacheDir, `${hash}.wav`);
+
+    if (fs.existsSync(outPath) && fs.statSync(outPath).size > 1000) {
+      return outPath;
+    }
+
+    const interaction = await this.ai.interactions.create({
+      model: 'gemini-3.8-flash-tts',
+      input: [{
+        type: 'user_input',
+        content: [{
+          type: 'text',
+          text: clean,
+          annotations: [{
+            type: 'speech_metadata',
+            style: 'natural Thai live seller, enthusiastic and engaging'
+          }]
+        }]
+      }],
+      response_format: { type: 'audio' },
+      generation_config: {
+        speech_config: [
+          { voice: voiceId }
+        ]
+      }
+    });
+
+    let audioBase64 = interaction.output_audio?.data;
+    if (!audioBase64 && interaction.steps) {
+      for (const step of interaction.steps) {
+        if (step.type === 'model_output' && step.content) {
+          const a = step.content.find(c => c.type === 'audio');
+          if (a && a.data) {
+            audioBase64 = a.data;
+            break;
+          }
+        }
+      }
+    }
+
+    if (audioBase64) {
+      fs.writeFileSync(outPath, Buffer.from(audioBase64, 'base64'));
+      return outPath;
+    }
+    return null;
   }
 }
 
@@ -678,6 +763,18 @@ class AudioMixerBridge {
     return speechId;
   }
 
+  playAudioFile(filepath, text, options = {}) {
+    const speechId = `spk_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    this.send({
+      command: 'play_audio_file',
+      filepath,
+      text: text || '',
+      id: speechId,
+      volume: options.volume !== undefined ? options.volume : CONFIG.volume
+    });
+    return speechId;
+  }
+
   stopSpeech() {
     this.send({ command: 'stop_speech' });
   }
@@ -840,7 +937,7 @@ class AIBrain {
     this.processQueue();
   }
 
-  processQueue() {
+  async processQueue() {
     if (this.isSpeaking || this.speechQueue.length === 0) return;
     const next = this.speechQueue.shift();
     this.isSpeaking = true;
@@ -855,6 +952,25 @@ class AIBrain {
       }
     }, 15000);
 
+    // Replicated Owner Voice synthesis via Gemini 3.8 Flash TTS
+    if (CONFIG.voice_mode === 'replicated' && CONFIG.replicated_voice_id && typeof geminiAI !== 'undefined' && geminiAI?.apiKey) {
+      try {
+        const audioPath = await geminiAI.synthesizeReplicated(next.text, CONFIG.replicated_voice_id);
+        if (audioPath && fs.existsSync(audioPath)) {
+          this.mixer.playAudioFile(audioPath, next.text, { volume: CONFIG.volume });
+          io.emit('ai_speaking', {
+            text: next.text,
+            meta: next.meta,
+            voiceMode: 'replicated',
+            timestamp: new Date().toLocaleTimeString()
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('[AIBrain] Replicated voice synthesis fallback to neural:', err.message);
+      }
+    }
+
     this.mixer.speak(next.text, {
       voice: CONFIG.voice,
       rate: CONFIG.rate,
@@ -864,6 +980,7 @@ class AIBrain {
     io.emit('ai_speaking', {
       text: next.text,
       meta: next.meta,
+      voiceMode: 'neural',
       timestamp: new Date().toLocaleTimeString()
     });
   }
@@ -1511,6 +1628,125 @@ app.get('/api/stream/health', (req, res) => {
     memoryUsageMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
     timestamp: Date.now()
   });
+});
+
+// ----------------------------------------------------
+// Avatar & Voice Cloning Studio APIs (Owner AI Digital Human)
+// ----------------------------------------------------
+app.get('/api/avatar/status', (req, res) => {
+  const assetsDir = path.join(__dirname, 'public', 'assets');
+  const hasIdleVideo = fs.existsSync(path.join(assetsDir, 'avatar_idle.mp4'));
+  const hasTalkingVideo = fs.existsSync(path.join(assetsDir, 'avatar_talking.mp4'));
+  const hasIdleImg = fs.existsSync(path.join(assetsDir, 'avatar_idle.jpg'));
+  const hasSpeakingImg = fs.existsSync(path.join(assetsDir, 'avatar_speaking.jpg'));
+  const hasBlinkImg = fs.existsSync(path.join(assetsDir, 'avatar_blink.jpg'));
+
+  res.json({
+    status: 'online',
+    avatarMode: (hasIdleVideo && hasTalkingVideo) ? 'video_hd' : 'canvas_2d',
+    fps: 30,
+    hasIdleVideo,
+    hasTalkingVideo,
+    hasIdleImg,
+    hasSpeakingImg,
+    hasBlinkImg,
+    voiceMode: CONFIG.voice_mode || 'neural',
+    replicatedVoiceId: CONFIG.replicated_voice_id || null,
+    currentVoice: CONFIG.voice,
+    hasGeminiApiKey: !!(process.env.GEMINI_API_KEY)
+  });
+});
+
+app.post('/api/avatar/upload-face', async (req, res) => {
+  try {
+    const { image, autoBuild } = req.body;
+    if (!image) return res.status(400).json({ error: 'Image base64 data required' });
+
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const assetsDir = path.join(__dirname, 'public', 'assets');
+    if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
+    
+    const idlePath = path.join(assetsDir, 'avatar_idle.jpg');
+    fs.writeFileSync(idlePath, buffer);
+
+    if (autoBuild !== false) {
+      const scriptPath = path.join(__dirname, 'generate_avatar_videos.py');
+      const py = spawn('python', [scriptPath, '--auto-morph', '--fps', '30'], {
+        cwd: __dirname,
+        env: process.env
+      });
+      py.on('close', (code) => {
+        io.emit('avatar_updated', { timestamp: Date.now(), fps: 30, autoBuilt: true });
+      });
+    }
+
+    res.json({ success: true, message: 'Owner portrait uploaded successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/avatar/generate-loop', (req, res) => {
+  const fps = parseInt(req.body?.fps) || 30;
+  const autoMorph = req.body?.autoMorph !== false;
+  const scriptPath = path.join(__dirname, 'generate_avatar_videos.py');
+  const args = [scriptPath, '--fps', String(fps)];
+  if (autoMorph) args.push('--auto-morph');
+
+  const py = spawn('python', args, { cwd: __dirname, env: process.env });
+  let output = '';
+  let errOutput = '';
+  py.stdout.on('data', d => output += d.toString());
+  py.stderr.on('data', d => errOutput += d.toString());
+
+  py.on('close', (code) => {
+    if (code === 0) {
+      io.emit('avatar_updated', { timestamp: Date.now(), fps });
+      res.json({ success: true, fps, output });
+    } else {
+      res.status(500).json({ error: 'Video generation failed', details: errOutput });
+    }
+  });
+});
+
+app.post('/api/avatar/clone-voice', async (req, res) => {
+  try {
+    const { audioData, consentData, displayName } = req.body;
+    if (!audioData) return res.status(400).json({ error: 'Audio sample required' });
+    if (!geminiAI || !geminiAI.apiKey) {
+      return res.status(400).json({ error: 'GEMINI_API_KEY is required for voice cloning' });
+    }
+
+    const cleanAudio = audioData.replace(/^data:audio\/\w+;base64,/, '');
+    const cleanConsent = consentData ? consentData.replace(/^data:audio\/\w+;base64,/, '') : cleanAudio;
+
+    const voiceId = await geminiAI.replicateVoice(cleanAudio, cleanConsent, displayName || 'Shop Owner');
+    CONFIG.replicated_voice_id = voiceId;
+    CONFIG.voice_mode = 'replicated';
+    saveConfig(CONFIG);
+    io.emit('config_updated', CONFIG);
+
+    res.json({ success: true, voiceId, voiceMode: 'replicated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/avatar/set-voice-mode', (req, res) => {
+  const { mode, voice } = req.body;
+  if (mode) CONFIG.voice_mode = mode;
+  if (voice) CONFIG.voice = voice;
+  saveConfig(CONFIG);
+  io.emit('config_updated', CONFIG);
+  res.json({ success: true, config: CONFIG });
+});
+
+app.post('/api/avatar/test-speak', (req, res) => {
+  const text = req.body?.text || 'สวัสดีค่า ยินดีต้อนรับเข้าสู่ไลฟ์ของทางร้านนะคะ สนใจสินค้าชิ้นไหนสอบถามได้เลยค่า';
+  aiBrain.enqueue(text, 1, { type: 'owner_test' });
+  res.json({ success: true, text });
 });
 
 // Stream Overlay page route

@@ -1,4 +1,5 @@
 {
+  "port": 3098,
   "voice": "th-TH-PremwadeeNeural",
   "persona": "sweet",
   "loopMode": "sequential",
@@ -7,12 +8,16 @@
   "respondToComments": true,
   "respondToGifts": true,
   "respondToJoins": true,
-  "volume": 1.0,
+  "volume": 1,
   "rate": "+0%",
   "bgmEnabled": false,
   "bgmVolume": 0.25,
   "autoSfxOnGift": true,
   "autoSfxOnPin": true,
   "geminiEnabled": false,
-  "geminiModel": "gemini-2.0-flash"
+  "geminiModel": "gemini-2.0-flash",
+  "voice_mode": "replicated",
+  "replicated_voice_id": null,
+  "avatar_mode": "video_hd",
+  "avatar_fps": 30
 }

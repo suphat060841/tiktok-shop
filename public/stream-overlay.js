@@ -343,6 +343,24 @@ function updateVideoAvatarState(state) {
   }
 }
 
+socket.on('avatar_updated', data => {
+  console.log('[AvatarEngine] Avatar video loops updated, hot-reloading 30 FPS streams...', data);
+  const t = Date.now();
+  if (videoIdle) {
+    videoIdle.src = `/assets/avatar_idle.mp4?t=${t}`;
+    videoIdle.load();
+    videoIdle.play().catch(() => {});
+  }
+  if (videoTalk) {
+    videoTalk.src = `/assets/avatar_talking.mp4?t=${t}`;
+    videoTalk.load();
+    videoTalk.play().catch(() => {});
+  }
+  if (imgIdle) imgIdle.src = `/assets/avatar_idle.jpg?t=${t}`;
+  if (imgSpeaking) imgSpeaking.src = `/assets/avatar_speaking.jpg?t=${t}`;
+  if (imgBlink) imgBlink.src = `/assets/avatar_blink.jpg?t=${t}`;
+});
+
 socket.on('tts_event', event => {
   if (event.event === 'playing') {
     isSpeaking = true;

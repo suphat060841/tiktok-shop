@@ -1541,5 +1541,81 @@ body.dashboard-body {
   gap: 6px;
 }
 
+/* Owner AI Avatar & Voice Clone Studio */
+.owner-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+}
+
+.owner-avatar-thumb {
+  width: 60px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--primary);
+  box-shadow: 0 4px 12px rgba(254, 44, 85, 0.25);
+}
+
+.owner-preview-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upload-dropzone {
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.upload-dropzone:hover, .upload-dropzone.dragover {
+  border-color: var(--primary);
+  background: rgba(254, 44, 85, 0.06);
+}
+
+.upload-icon {
+  font-size: 1.8rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.upload-text {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.upload-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.btn-group-row {
+  display: flex;
+  gap: 8px;
+}
+
+.alert-info-box {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(37, 244, 238, 0.1);
+  border: 1px solid rgba(37, 244, 238, 0.3);
+  color: #25f4ee;
+  margin-top: 8px;
+  word-break: break-word;
+}
+
+
 
 

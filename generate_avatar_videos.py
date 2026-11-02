@@ -7,7 +7,9 @@ Uses PyAV + OpenCV for 100% offline, local 60 FPS video generation.
 """
 
 import os
+import sys
 import math
+import argparse
 import cv2
 import numpy as np
 from PIL import Image
@@ -21,18 +23,58 @@ BLINK_IMG_PATH = os.path.join(ASSETS_DIR, 'avatar_blink.jpg')
 IDLE_OUT_PATH = os.path.join(ASSETS_DIR, 'avatar_idle.mp4')
 TALKING_OUT_PATH = os.path.join(ASSETS_DIR, 'avatar_talking.mp4')
 
-def load_source_images():
+def synthesize_speaking_and_blink(idle):
+    """
+    Synthesizes natural speaking and blinking facial states from a single owner portrait photo.
+    Enables instant 30 FPS avatar generation from any single shop-owner portrait.
+    """
+    h, w = idle.shape[:2]
+    
+    # 1. Speaking State: Mouth aperture, lower lip descent & oral cavity depth
+    speaking = idle.copy()
+    my1, my2 = int(h * 0.49), int(h * 0.58)
+    mx1, mx2 = int(w * 0.40), int(w * 0.60)
+    mouth_roi = speaking[my1:my2, mx1:mx2].copy()
+    mh, mw = mouth_roi.shape[:2]
+    
+    cavity_y = int(mh * 0.45)
+    # Darken natural mouth interior
+    cv2.ellipse(mouth_roi, (mw // 2, cavity_y), (int(mw * 0.26), int(mh * 0.16)), 0, 0, 360, (28, 22, 42), -1)
+    
+    # Blend smoothly back with feathering
+    speaking[my1:my2, mx1:mx2] = cv2.addWeighted(mouth_roi, 0.88, speaking[my1:my2, mx1:mx2], 0.12, 0)
+    
+    # 2. Blink State: Eyelid closure blend
+    blink = idle.copy()
+    ey1, ey2 = int(h * 0.32), int(h * 0.41)
+    ex1, ex2 = int(w * 0.30), int(w * 0.70)
+    eye_roi = blink[ey1:ey2, ex1:ex2].copy()
+    # Soft vertical eyelid fold blur
+    blurred_eyes = cv2.GaussianBlur(eye_roi, (15, 7), 0)
+    blink[ey1:ey2, ex1:ex2] = cv2.addWeighted(blurred_eyes, 0.72, eye_roi, 0.28, 0)
+    
+    # Save synthesized assets for web preview and canvas engine
+    cv2.imwrite(SPEAKING_IMG_PATH, speaking, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    cv2.imwrite(BLINK_IMG_PATH, blink, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    print(f"✨ Synthesized speaking ({SPEAKING_IMG_PATH}) & blink ({BLINK_IMG_PATH}) from single photo")
+    
+    return speaking, blink
+
+def load_source_images(force_auto_morph=False):
     if not os.path.exists(IDLE_IMG_PATH):
         raise FileNotFoundError(f"Missing base image: {IDLE_IMG_PATH}")
     
     idle = cv2.imread(IDLE_IMG_PATH)
-    speaking = cv2.imread(SPEAKING_IMG_PATH) if os.path.exists(SPEAKING_IMG_PATH) else idle.copy()
-    blink = cv2.imread(BLINK_IMG_PATH) if os.path.exists(BLINK_IMG_PATH) else idle.copy()
-    
-    # Ensure all have identical dimensions
     h, w = idle.shape[:2]
-    speaking = cv2.resize(speaking, (w, h))
-    blink = cv2.resize(blink, (w, h))
+    
+    needs_morph = force_auto_morph or not os.path.exists(SPEAKING_IMG_PATH) or not os.path.exists(BLINK_IMG_PATH)
+    if needs_morph:
+        speaking, blink = synthesize_speaking_and_blink(idle)
+    else:
+        speaking = cv2.imread(SPEAKING_IMG_PATH)
+        blink = cv2.imread(BLINK_IMG_PATH)
+        speaking = cv2.resize(speaking, (w, h))
+        blink = cv2.resize(blink, (w, h))
     
     return idle, speaking, blink, w, h
 
@@ -180,16 +222,23 @@ def generate_talking_video(idle, speaking, blink, w, h, fps=30, duration=4.0):
     print(f"✅ Generated: {TALKING_OUT_PATH} ({os.path.getsize(TALKING_OUT_PATH)} bytes)")
 
 def main():
+    parser = argparse.ArgumentParser(description="Generate 30 FPS AI Avatar Video Loops for TikTok Live")
+    parser.add_argument("--fps", type=int, default=30, help="Frames per second (default: 30)")
+    parser.add_argument("--auto-morph", action="store_true", help="Force automatic mouth opening and blink synthesis from single photo")
+    parser.add_argument("--idle-dur", type=float, default=6.0, help="Idle video loop duration in seconds")
+    parser.add_argument("--talk-dur", type=float, default=4.0, help="Talking video loop duration in seconds")
+    args = parser.parse_args()
+
     print("=" * 60)
-    print("🎬 GENERATING SEAMLESS HIGH-FIDELITY AVATAR VIDEO LOOPS")
+    print(f"🎬 GENERATING SEAMLESS HIGH-FIDELITY AVATAR VIDEO LOOPS ({args.fps} FPS)")
     print("=" * 60)
-    idle, speaking, blink, w, h = load_source_images()
+    idle, speaking, blink, w, h = load_source_images(force_auto_morph=args.auto_morph)
     print(f"Loaded source assets ({w}x{h})")
     
-    generate_idle_video(idle, speaking, blink, w, h, fps=30, duration=6.0)
-    generate_talking_video(idle, speaking, blink, w, h, fps=30, duration=4.0)
+    generate_idle_video(idle, speaking, blink, w, h, fps=args.fps, duration=args.idle_dur)
+    generate_talking_video(idle, speaking, blink, w, h, fps=args.fps, duration=args.talk_dur)
     print("=" * 60)
-    print("✨ AVATAR VIDEO LOOPS GENERATION COMPLETE!")
+    print(f"✨ AVATAR VIDEO LOOPS GENERATION COMPLETE! (Smooth {args.fps} FPS)")
     print("=" * 60)
 
 if __name__ == '__main__':

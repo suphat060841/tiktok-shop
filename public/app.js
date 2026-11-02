@@ -1227,5 +1227,312 @@ startDirectorPing();
 checkDirectorStreamHealth();
 renderDirectorQuickBaskets();
 
+// ==========================================
+// Owner AI Avatar & Voice Clone Studio
+// ==========================================
+const ownerFacePreview = document.getElementById('owner-face-preview');
+const inputOwnerFace = document.getElementById('input-owner-face');
+const dropzoneOwnerFace = document.getElementById('dropzone-owner-face');
+const btnRender30fps = document.getElementById('btn-render-30fps');
+const chkAutoMorph = document.getElementById('chk-auto-morph');
+const ownerRenderStatus = document.getElementById('owner-render-status');
+
+const selectOwnerVoiceMode = document.getElementById('select-owner-voice-mode');
+const voiceSourceBadge = document.getElementById('voice-source-badge');
+const inputOwnerVoice = document.getElementById('input-owner-voice');
+const btnRecordVoice = document.getElementById('btn-record-voice');
+const btnChooseVoiceFile = document.getElementById('btn-choose-voice-file');
+const btnCloneVoice = document.getElementById('btn-clone-voice');
+const recordStatusBox = document.getElementById('record-status-box');
+const cloneStatusBox = document.getElementById('clone-status-box');
+
+const inputTestSpeech = document.getElementById('input-test-speech');
+const btnTestOwnerSpeak = document.getElementById('btn-test-owner-speak');
+
+let recordedAudioBase64 = null;
+let mediaRecorder = null;
+let audioChunks = [];
+
+function loadAvatarStudioStatus() {
+  fetch('/api/avatar/status')
+    .then(r => r.json())
+    .then(data => {
+      if (selectOwnerVoiceMode) {
+        selectOwnerVoiceMode.value = data.voiceMode || 'neural';
+      }
+      if (voiceSourceBadge) {
+        if (data.voiceMode === 'replicated') {
+          voiceSourceBadge.textContent = 'Gemini 3.8 Cloned';
+          voiceSourceBadge.className = 'badge badge-success';
+        } else {
+          voiceSourceBadge.textContent = 'Edge TTS';
+          voiceSourceBadge.className = 'badge badge-warning';
+        }
+      }
+      const loopInfo = document.getElementById('owner-loop-info');
+      if (loopInfo) {
+        loopInfo.textContent = data.avatarMode === 'video_hd'
+          ? 'Seamless Loop: 30 FPS H.264 (ใช้งานจริง)'
+          : 'Canvas 2D Morphing (กรุณากดเรนเดอร์)';
+      }
+    })
+    .catch(() => {});
+}
+
+// Face Upload & Dropzone
+if (dropzoneOwnerFace && inputOwnerFace) {
+  dropzoneOwnerFace.addEventListener('click', () => inputOwnerFace.click());
+  
+  dropzoneOwnerFace.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzoneOwnerFace.classList.add('dragover');
+  });
+
+  dropzoneOwnerFace.addEventListener('dragleave', () => {
+    dropzoneOwnerFace.classList.remove('dragover');
+  });
+
+  dropzoneOwnerFace.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzoneOwnerFace.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleOwnerFaceFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  inputOwnerFace.addEventListener('change', () => {
+    if (inputOwnerFace.files && inputOwnerFace.files[0]) {
+      handleOwnerFaceFile(inputOwnerFace.files[0]);
+    }
+  });
+}
+
+function handleOwnerFaceFile(file) {
+  if (!file.type.startsWith('image/')) {
+    alert('กรุณาเลือกไฟล์รูปภาพ (.jpg, .png, .webp)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    if (ownerFacePreview) ownerFacePreview.src = base64;
+    if (ownerRenderStatus) {
+      ownerRenderStatus.textContent = '⏳ กำลังอัปโหลดรูปภาพเจ้าของร้านและประมวลผล 30 FPS...';
+      ownerRenderStatus.classList.remove('hidden');
+    }
+
+    fetch('/api/avatar/upload-face', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: base64,
+        autoBuild: chkAutoMorph ? chkAutoMorph.checked : true
+      })
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (ownerRenderStatus) {
+        ownerRenderStatus.textContent = '✅ อัปโหลดและเริ่มสร้างวิดีโอ 30 FPS เรียบร้อยแล้ว!';
+      }
+    })
+    .catch(err => {
+      if (ownerRenderStatus) {
+        ownerRenderStatus.textContent = '❌ อัปโหลดผิดพลาด: ' + err.message;
+      }
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+// 30 FPS Render Button
+if (btnRender30fps) {
+  btnRender30fps.addEventListener('click', () => {
+    if (ownerRenderStatus) {
+      ownerRenderStatus.textContent = '🎬 กำลังเรนเดอร์วิดีโอ 30 FPS Seamless Loops... (ประมาณ 3-5 วินาที)';
+      ownerRenderStatus.classList.remove('hidden');
+    }
+    btnRender30fps.disabled = true;
+
+    fetch('/api/avatar/generate-loop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fps: 30,
+        autoMorph: chkAutoMorph ? chkAutoMorph.checked : true
+      })
+    })
+    .then(r => r.json())
+    .then(res => {
+      btnRender30fps.disabled = false;
+      if (res.success) {
+        if (ownerRenderStatus) {
+          ownerRenderStatus.textContent = '✨ เรนเดอร์วิดีโอ 30 FPS สำเร็จ! นำไปใช้ในจอไลฟ์สดแล้ว';
+        }
+        loadAvatarStudioStatus();
+      } else {
+        if (ownerRenderStatus) {
+          ownerRenderStatus.textContent = '❌ ผิดพลาด: ' + (res.error || 'Unknown error');
+        }
+      }
+    })
+    .catch(err => {
+      btnRender30fps.disabled = false;
+      if (ownerRenderStatus) {
+        ownerRenderStatus.textContent = '❌ ข้อผิดพลาดเครือข่าย: ' + err.message;
+      }
+    });
+  });
+}
+
+// Voice Recording & Cloning
+if (btnChooseVoiceFile && inputOwnerVoice) {
+  btnChooseVoiceFile.addEventListener('click', () => inputOwnerVoice.click());
+  inputOwnerVoice.addEventListener('change', () => {
+    if (inputOwnerVoice.files && inputOwnerVoice.files[0]) {
+      const file = inputOwnerVoice.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        recordedAudioBase64 = e.target.result;
+        if (recordStatusBox) {
+          recordStatusBox.textContent = `📁 โหลดไฟล์เสียง: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+          recordStatusBox.classList.remove('hidden');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+
+if (btnRecordVoice) {
+  let isRecording = false;
+  btnRecordVoice.addEventListener('click', async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('เบราว์เซอร์ไม่รองรับการบันทึกเสียงสดผ่านไมโครโฟน กรุณาใช้ปุ่มอัปโหลดไฟล์');
+      return;
+    }
+
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(audioChunks, { type: 'audio/wav' });
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            recordedAudioBase64 = e.target.result;
+            if (recordStatusBox) {
+              recordStatusBox.textContent = `🎙️ บันทึกเสียงสดเรียบร้อย (${Math.round(blob.size / 1024)} KB)`;
+              recordStatusBox.classList.remove('hidden');
+            }
+          };
+          reader.readAsDataURL(blob);
+          stream.getTracks().forEach(t => t.stop());
+        };
+        mediaRecorder.start();
+        isRecording = true;
+        btnRecordVoice.textContent = '⏹️ หยุดบันทึกเสียง (กดเมื่อพูดเสร็จ)';
+        btnRecordVoice.classList.add('btn-danger');
+        if (recordStatusBox) {
+          recordStatusBox.textContent = '🔴 กำลังอัดเสียงพูด... (กรุณาพูดแนะนำร้าน 10-15 วินาที)';
+          recordStatusBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        alert('ไม่สามารถเข้าถึงไมโครโฟนได้: ' + err.message);
+      }
+    } else {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      isRecording = false;
+      btnRecordVoice.textContent = '🎙️ บันทึกเสียง 15 วิ';
+      btnRecordVoice.classList.remove('btn-danger');
+    }
+  });
+}
+
+if (btnCloneVoice) {
+  btnCloneVoice.addEventListener('click', () => {
+    if (!recordedAudioBase64) {
+      alert('กรุณาบันทึกเสียง หรือเลือกไฟล์เสียงตัวอย่างของเจ้าของร้านก่อน');
+      return;
+    }
+    if (cloneStatusBox) {
+      cloneStatusBox.textContent = '⏳ กำลังประมวลผลโคลนเสียงผ่าน Gemini 3.8 Flash TTS Voice Replication...';
+      cloneStatusBox.classList.remove('hidden');
+    }
+    btnCloneVoice.disabled = true;
+
+    fetch('/api/avatar/clone-voice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        audioData: recordedAudioBase64,
+        displayName: 'Shop Owner Replicated Voice'
+      })
+    })
+    .then(r => r.json())
+    .then(res => {
+      btnCloneVoice.disabled = false;
+      if (res.success) {
+        if (cloneStatusBox) {
+          cloneStatusBox.textContent = `🎉 โคลนเสียงสำเร็จ! Voice ID: ${res.voiceId}`;
+        }
+        loadAvatarStudioStatus();
+      } else {
+        if (cloneStatusBox) {
+          cloneStatusBox.textContent = `❌ โคลนเสียงไม่สำเร็จ: ${res.error || 'API Error'}`;
+        }
+      }
+    })
+    .catch(err => {
+      btnCloneVoice.disabled = false;
+      if (cloneStatusBox) {
+        cloneStatusBox.textContent = '❌ เครือข่ายผิดพลาด: ' + err.message;
+      }
+    });
+  });
+}
+
+if (selectOwnerVoiceMode) {
+  selectOwnerVoiceMode.addEventListener('change', () => {
+    fetch('/api/avatar/set-voice-mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: selectOwnerVoiceMode.value })
+    })
+    .then(r => r.json())
+    .then(() => loadAvatarStudioStatus());
+  });
+}
+
+if (btnTestOwnerSpeak) {
+  btnTestOwnerSpeak.addEventListener('click', () => {
+    const text = inputTestSpeech ? inputTestSpeech.value.trim() : '';
+    if (!text) return;
+    btnTestOwnerSpeak.disabled = true;
+    fetch('/api/avatar/test-speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    })
+    .then(r => r.json())
+    .then(() => {
+      setTimeout(() => { btnTestOwnerSpeak.disabled = false; }, 2000);
+    })
+    .catch(() => { btnTestOwnerSpeak.disabled = false; });
+  });
+}
+
+socket.on('avatar_updated', () => {
+  if (ownerFacePreview) {
+    ownerFacePreview.src = `/assets/avatar_idle.jpg?t=${Date.now()}`;
+  }
+  loadAvatarStudioStatus();
+});
+
+loadAvatarStudioStatus();
+
 
 

@@ -479,6 +479,38 @@ test('Typography Assets: Extracted Thai WOFF2 fonts present and linked', () => {
   assert.ok(css.includes('prompt-500.woff2'), 'style.css imports prompt-500.woff2');
 });
 
+test('Owner Studio API: /api/avatar/status returns 30 FPS video mode and voice configuration', () => {
+  const route = serverModule.app._router.stack.find(r => r.route && r.route.path === '/api/avatar/status');
+  assert.ok(route, 'Route /api/avatar/status exists in app router');
+  const handler = route.route.stack[0].handle;
+  let resData = null;
+  handler({}, { json: (d) => { resData = d; return this; } });
+  assert.strictEqual(resData.fps, 30, 'Avatar fps is 30');
+  assert.strictEqual(resData.avatarMode, 'video_hd', 'Avatar mode is video_hd');
+  assert.ok(resData.hasIdleVideo && resData.hasTalkingVideo, 'Both 30 FPS video loops exist');
+});
+
+test('Owner Studio API: /api/avatar/set-voice-mode updates voice mode configuration', () => {
+  const route = serverModule.app._router.stack.find(r => r.route && r.route.path === '/api/avatar/set-voice-mode');
+  assert.ok(route, 'Route /api/avatar/set-voice-mode exists in app router');
+  const handler = route.route.stack[0].handle;
+  let resData = null;
+  const mockReq = { body: { mode: 'replicated' } };
+  handler(mockReq, { json: (d) => { resData = d; return this; } });
+  assert.strictEqual(resData.success, true);
+  assert.strictEqual(serverModule.CONFIG.voice_mode, 'replicated');
+
+  // Revert back for clean state
+  serverModule.CONFIG.voice_mode = 'neural';
+});
+
+test('Owner Studio UI: index.html has owner avatar & voice clone studio controls', () => {
+  const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf-8');
+  assert.ok(html.includes('left-tab-owner'), 'index.html has left-tab-owner');
+  assert.ok(html.includes('btn-render-30fps'), 'index.html has 30 FPS render button');
+  assert.ok(html.includes('btn-clone-voice'), 'index.html has Gemini Voice Replication button');
+});
+
 console.log('\n====================================================');
 console.log(`📊 TEST RESULTS: ${passedTests} PASSED, ${failedTests} FAILED`);
 console.log('====================================================\n');
