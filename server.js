@@ -1673,12 +1673,16 @@ app.post('/api/avatar/upload-face', async (req, res) => {
 
     if (autoBuild !== false) {
       const scriptPath = path.join(__dirname, 'generate_avatar_videos.py');
-      const py = spawn('python', [scriptPath, '--auto-morph', '--fps', '30'], {
+      const pythonBin = process.env.PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3');
+      const py = spawn(pythonBin, [scriptPath, '--auto-morph', '--fps', '30'], {
         cwd: __dirname,
         env: process.env
       });
+      py.on('error', (err) => console.error('[AvatarEngine] Auto-build spawn error:', err.message));
       py.on('close', (code) => {
-        io.emit('avatar_updated', { timestamp: Date.now(), fps: 30, autoBuilt: true });
+        if (code === 0) {
+          io.emit('avatar_updated', { timestamp: Date.now(), fps: 30, autoBuilt: true });
+        }
       });
     }
 
@@ -1695,18 +1699,28 @@ app.post('/api/avatar/generate-loop', (req, res) => {
   const args = [scriptPath, '--fps', String(fps)];
   if (autoMorph) args.push('--auto-morph');
 
-  const py = spawn('python', args, { cwd: __dirname, env: process.env });
+  const pythonBin = process.env.PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3');
+  const py = spawn(pythonBin, args, { cwd: __dirname, env: process.env });
   let output = '';
   let errOutput = '';
   py.stdout.on('data', d => output += d.toString());
   py.stderr.on('data', d => errOutput += d.toString());
 
+  py.on('error', (err) => {
+    console.error('[AvatarEngine] Spawn error:', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Video generation failed', details: `Process spawn error: ${err.message}` });
+    }
+  });
+
   py.on('close', (code) => {
+    if (res.headersSent) return;
     if (code === 0) {
       io.emit('avatar_updated', { timestamp: Date.now(), fps });
       res.json({ success: true, fps, output });
     } else {
-      res.status(500).json({ error: 'Video generation failed', details: errOutput });
+      console.error('[AvatarEngine] Python process failed with code', code, errOutput);
+      res.status(500).json({ error: 'Video generation failed', details: errOutput || `Process exited with code ${code}` });
     }
   });
 });

@@ -1371,7 +1371,8 @@ if (btnRender30fps) {
         loadAvatarStudioStatus();
       } else {
         if (ownerRenderStatus) {
-          ownerRenderStatus.textContent = '❌ ผิดพลาด: ' + (res.error || 'Unknown error');
+          const detail = res.details ? ` (${res.details.trim()})` : '';
+          ownerRenderStatus.textContent = '❌ ผิดพลาด: ' + (res.error || 'Unknown error') + detail;
         }
       }
     })
