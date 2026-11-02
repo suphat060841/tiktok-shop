@@ -148,21 +148,30 @@ def load_source_images(force_auto_morph=False):
     h = h - (h % 2)
     idle = idle[:h, :w]
     
-    needs_morph = force_auto_morph or not os.path.exists(SPEAKING_IMG_PATH) or not os.path.exists(BLINK_IMG_PATH)
-    if needs_morph:
-        speaking, blink = synthesize_speaking_and_blink(idle)
-    else:
-        speaking = safe_load_image(SPEAKING_IMG_PATH)
-        blink = safe_load_image(BLINK_IMG_PATH)
-        if speaking is None or blink is None:
-            speaking, blink = synthesize_speaking_and_blink(idle)
+    speaking = safe_load_image(SPEAKING_IMG_PATH) if os.path.exists(SPEAKING_IMG_PATH) else None
+    blink = safe_load_image(BLINK_IMG_PATH) if os.path.exists(BLINK_IMG_PATH) else None
+
+    # Verify if speaking and blink have genuine facial variation
+    if speaking is not None:
+        if HAVE_CV2:
+            speaking = cv2.resize(speaking, (w, h))
         else:
-            if HAVE_CV2:
-                speaking = cv2.resize(speaking, (w, h))
-                blink = cv2.resize(blink, (w, h))
-            else:
-                speaking = speaking[:h, :w]
-                blink = blink[:h, :w]
+            speaking = speaking[:h, :w]
+        diff_spk = np.mean(np.abs(idle.astype(np.float32) - speaking.astype(np.float32)))
+        if diff_spk < 2.0:
+            speaking = None
+
+    if blink is not None:
+        if HAVE_CV2:
+            blink = cv2.resize(blink, (w, h))
+        else:
+            blink = blink[:h, :w]
+        diff_blk = np.mean(np.abs(idle.astype(np.float32) - blink.astype(np.float32)))
+        if diff_blk < 1.5:
+            blink = None
+
+    if force_auto_morph or speaking is None or blink is None:
+        speaking, blink = synthesize_speaking_and_blink(idle)
     
     return idle, speaking, blink, w, h
 
@@ -315,15 +324,14 @@ def generate_idle_video(idle, speaking, blink, w, h, fps=30, duration=6.0):
     
     for i in range(total_frames):
         t = i / fps
+        # Natural gentle breathing: max 1.0px vertical rise/fall, rock-steady background (0 angle, 0 dx)
         breath_phase = 2.0 * math.pi * (t / 3.0)
-        dy = 4.0 * math.sin(breath_phase)
-        scale = 1.0 + 0.005 * math.sin(breath_phase)
+        dy = 1.0 * math.sin(breath_phase)
+        scale = 1.0 + 0.001 * math.sin(breath_phase)
+        dx = 0.0
+        angle = 0.0
         
-        sway_phase = 2.0 * math.pi * (t / 6.0)
-        dx = 2.5 * math.sin(sway_phase)
-        angle = 0.45 * math.cos(sway_phase)
-        
-        b_weight = get_blink_factor(t, blink_times)
+        b_weight = get_blink_factor(t, blink_times, blink_duration=0.18)
         if b_weight > 0.001 and HAVE_CV2:
             frame_base = cv2.addWeighted(idle, 1.0 - b_weight, blink, b_weight, 0)
         else:
@@ -343,41 +351,38 @@ def generate_talking_video(idle, speaking, blink, w, h, fps=30, duration=4.0):
     
     writer = RobustVideoWriter(TALKING_OUT_PATH, w, h, fps, SPEAKING_IMG_PATH)
     center = (w / 2.0, h * 0.45)
-    blink_times = [1.2, 2.9]
+    blink_times = [1.4, 3.1]
     
     for i in range(total_frames):
         t = i / fps
+        # Gentle affirmative nod matching speech cadence: max 1.4px vertical nod, zero screen tilt
         nod_phase = 2.0 * math.pi * (t / 1.0)
-        nod2_phase = 2.0 * math.pi * (t / 0.5)
-        dy = 5.5 * math.sin(nod_phase) + 1.8 * math.cos(nod2_phase)
+        dy = 1.4 * math.sin(nod_phase)
+        scale = 1.0 + 0.001 * math.sin(nod_phase)
+        dx = 0.0
+        angle = 0.0
         
-        tilt_phase = 2.0 * math.pi * (t / 2.0)
-        angle = 0.85 * math.sin(tilt_phase)
-        dx = 3.0 * math.cos(tilt_phase)
-        scale = 1.0 + 0.007 * math.sin(nod_phase)
+        # Vivid Thai Speech Syllable Modulation (3.5 syllables per second)
+        syl1 = math.sin(2.0 * math.pi * 14.0 * t / duration)
+        cadence = 0.5 + 0.5 * math.sin(2.0 * math.pi * 3.5 * t / duration)
+        raw_mouth = 0.5 + 0.5 * syl1 * cadence
         
-        syl1 = math.sin(2.0 * math.pi * (15.0 * t / 4.0))
-        syl2 = math.cos(2.0 * math.pi * (7.0 * t / 4.0))
-        syl3 = math.sin(2.0 * math.pi * (31.0 * t / 4.0))
-        
-        raw_mouth = 0.52 + 0.32 * syl1 + 0.16 * syl2 + 0.08 * syl3
+        # Smooth envelope boundary: start at 0 (t=0) and return to 0 (t=duration)
+        edge_window = 0.20
+        if t < edge_window:
+            raw_mouth *= (t / edge_window)
+        elif t > (duration - edge_window):
+            raw_mouth *= ((duration - t) / edge_window)
+            
         mouth_blend = max(0.0, min(1.0, raw_mouth))
         
-        edge_window = 0.25
-        if t < edge_window:
-            fade = 0.5 - 0.5 * math.cos(math.pi * t / edge_window)
-            mouth_blend = mouth_blend * fade + 0.5 * (1.0 - fade)
-        elif t > (duration - edge_window):
-            dt = duration - t
-            fade = 0.5 - 0.5 * math.cos(math.pi * dt / edge_window)
-            mouth_blend = mouth_blend * fade + 0.5 * (1.0 - fade)
-            
         if HAVE_CV2:
             frame_base = cv2.addWeighted(idle, 1.0 - mouth_blend, speaking, mouth_blend, 0)
         else:
             frame_base = speaking if mouth_blend > 0.5 else idle
         
-        b_weight = get_blink_factor(t, blink_times)
+        # Organic Eye Blink during speech
+        b_weight = get_blink_factor(t, blink_times, blink_duration=0.18)
         if b_weight > 0.001 and HAVE_CV2:
             frame_base = cv2.addWeighted(frame_base, 1.0 - b_weight, blink, b_weight, 0)
             

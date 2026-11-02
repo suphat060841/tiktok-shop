@@ -101,7 +101,7 @@ body.overlay-body {
   height: 100%;
   object-fit: cover;
   object-position: center center;
-  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.2s ease-in-out;
   pointer-events: none;
 }
 
@@ -111,25 +111,6 @@ body.overlay-body {
   object-fit: cover;
   object-position: center center;
   transform-origin: center center;
-  animation: avatarOrganicMotion 5.2s infinite ease-in-out;
-}
-
-@keyframes avatarOrganicMotion {
-  0% {
-    transform: scale(1) translateY(0) rotate(0deg);
-  }
-  28% {
-    transform: scale(1.002, 1.005) translateY(-3px) rotate(0.12deg);
-  }
-  50% {
-    transform: scale(1.004, 1.008) translateY(-6px) rotate(0deg);
-  }
-  75% {
-    transform: scale(1.002, 1.005) translateY(-2px) rotate(-0.12deg);
-  }
-  100% {
-    transform: scale(1) translateY(0) rotate(0deg);
-  }
 }
 
 /* Cinematic Studio Lighting Vignette & Depth */

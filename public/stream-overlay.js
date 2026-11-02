@@ -86,7 +86,7 @@ function renderFrame() {
   const spkReady = imgSpeaking && (imgSpeaking.complete && imgSpeaking.naturalWidth > 0);
   const blinkReady = imgBlink && (imgBlink.complete && imgBlink.naturalWidth > 0);
 
-  if (idleReady) {
+  if (idleReady && !useVideoMode) {
     ctx.clearRect(0, 0, dw, dh);
 
     // Layer 1: Base Idle Frame (Wai Greeting / Smiling)
@@ -94,7 +94,7 @@ function renderFrame() {
     ctx.drawImage(imgIdle, 0, 0, dw, dh);
 
     // Layer 2: Speaking Frame with dynamic syllable openness
-    if (spkReady && speechBlend > 0.005) {
+    if (spkReady && speechBlend > 0.01) {
       ctx.globalAlpha = Math.min(1.0, Math.max(0.0, speechBlend));
       ctx.drawImage(imgSpeaking, 0, 0, dw, dh);
     }
@@ -293,26 +293,49 @@ const videoTalk = document.getElementById('video-avatar-talk');
 let useVideoMode = false;
 
 function activateVideoMode() {
-  if (useVideoMode) return;
   useVideoMode = true;
   avatarCanvas.style.display = 'none';
   if (videoIdle) {
+    videoIdle.muted = true;
     videoIdle.style.opacity = '1';
-    videoIdle.play().catch(() => {});
+    videoIdle.play().catch(err => {
+      console.warn('[AvatarEngine] videoIdle play failed, falling back to Canvas:', err);
+      useVideoMode = false;
+      avatarCanvas.style.display = 'block';
+    });
   }
   if (videoTalk) {
+    videoTalk.muted = true;
+    videoTalk.style.opacity = '0';
     videoTalk.play().catch(() => {});
   }
-  console.log('[AvatarEngine] High-Fidelity Video Avatar Mode Activated (Seamless Loops)!');
+  console.log('[AvatarEngine] High-Fidelity 30 FPS Video Mode Active (Seamless Loops)!');
 }
 
 function checkVideoAvatarSupport() {
   if (videoIdle && videoTalk) {
-    if (videoIdle.readyState >= 3) {
+    videoIdle.muted = true;
+    videoTalk.muted = true;
+    
+    if (videoIdle.readyState >= 2) {
       activateVideoMode();
     } else {
+      videoIdle.addEventListener('loadeddata', activateVideoMode, { once: true });
       videoIdle.addEventListener('canplay', activateVideoMode, { once: true });
     }
+    
+    // Auto-resume playback on user interaction
+    const unlockPlay = () => {
+      if (videoIdle && videoIdle.paused) {
+        videoIdle.play().then(() => activateVideoMode()).catch(() => {});
+      }
+      if (videoTalk && videoTalk.paused) {
+        videoTalk.play().catch(() => {});
+      }
+    };
+    document.addEventListener('click', unlockPlay);
+    document.addEventListener('touchstart', unlockPlay);
+
     videoIdle.addEventListener('error', () => {
       console.warn('[AvatarEngine] Video idle failed to load, falling back to Canvas 2D Morphing.');
       useVideoMode = false;
@@ -326,7 +349,7 @@ function updateVideoAvatarState(state) {
   if (!useVideoMode) return;
   if (state === 'speaking') {
     if (videoTalk) {
-      videoTalk.play().catch(() => {});
+      if (videoTalk.paused) videoTalk.play().catch(() => {});
       videoTalk.style.opacity = '1';
     }
     if (videoIdle) {
@@ -334,7 +357,7 @@ function updateVideoAvatarState(state) {
     }
   } else {
     if (videoIdle) {
-      videoIdle.play().catch(() => {});
+      if (videoIdle.paused) videoIdle.play().catch(() => {});
       videoIdle.style.opacity = '1';
     }
     if (videoTalk) {
