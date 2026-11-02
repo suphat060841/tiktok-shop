@@ -179,6 +179,36 @@
           <div id="owner-render-status" class="alert-info-box small hidden"></div>
         </div>
 
+        <!-- Direct AI Video Import Card -->
+        <div class="glass-card mb-3">
+          <div class="d-flex justify-between align-center mb-2">
+            <h2 class="card-title mb-0">🎥 นำเข้าวิดีโอ AI ที่มีอยู่แล้ว (.mp4)</h2>
+            <span class="badge badge-success">Direct Import</span>
+          </div>
+          <p class="text-muted small mb-2">หากมีคลิปวิดีโอจาก HeyGen, SadTalker, D-ID, Kling หรือโปรแกรมอื่นๆ สามารถนำมาใช้งานได้ทันทีโดยไม่ต้องเรนเดอร์ใหม่</p>
+
+          <div class="form-row mb-2">
+            <div class="form-group col-6">
+              <label class="form-label font-weight-bold">1. วิดีโออยู่นิ่ง (Idle Loop)</label>
+              <input type="file" id="input-upload-video-idle" accept="video/mp4,video/*" style="display:none;">
+              <button id="btn-upload-video-idle" class="btn btn-outline-primary btn-full small">
+                📁 เลือกไฟล์ Idle (.mp4)
+              </button>
+              <div class="text-muted very-small mt-1" id="status-video-idle-name">avatar_idle.mp4 (พร้อมใช้)</div>
+            </div>
+            <div class="form-group col-6">
+              <label class="form-label font-weight-bold">2. วิดีโอตอนพูด (Talking Loop)</label>
+              <input type="file" id="input-upload-video-talking" accept="video/mp4,video/*" style="display:none;">
+              <button id="btn-upload-video-talking" class="btn btn-outline-primary btn-full small">
+                📁 เลือกไฟล์ Talking (.mp4)
+              </button>
+              <div class="text-muted very-small mt-1" id="status-video-talking-name">avatar_talking.mp4 (พร้อมใช้)</div>
+            </div>
+          </div>
+          <div class="upload-hint text-muted very-small mb-1">💡 แนะนำ: สัดส่วน 9:16 แนวตั้ง (1080x1920 หรือ 720x1280), 30 FPS, ความยาว 3-5 วินาที</div>
+          <div id="video-upload-status" class="alert-info-box small hidden"></div>
+        </div>
+
         <!-- Owner Voice Cloning Card -->
         <div class="glass-card mb-3">
           <div class="d-flex justify-between align-center mb-2">

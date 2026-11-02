@@ -1385,6 +1385,83 @@ if (btnRender30fps) {
   });
 }
 
+// Direct MP4 Video Uploader Handlers
+const btnUploadVideoIdle = document.getElementById('btn-upload-video-idle');
+const inputUploadVideoIdle = document.getElementById('input-upload-video-idle');
+const statusVideoIdleName = document.getElementById('status-video-idle-name');
+
+const btnUploadVideoTalking = document.getElementById('btn-upload-video-talking');
+const inputUploadVideoTalking = document.getElementById('input-upload-video-talking');
+const statusVideoTalkingName = document.getElementById('status-video-talking-name');
+const videoUploadStatus = document.getElementById('video-upload-status');
+
+function uploadDirectVideo(file, type) {
+  if (!file || !file.type.includes('mp4') && !file.name.endsWith('.mp4')) {
+    alert('กรุณาเลือกไฟล์วิดีโอที่เป็น .mp4 เท่านั้น');
+    return;
+  }
+  if (videoUploadStatus) {
+    videoUploadStatus.textContent = `⏳ กำลังอัปโหลด ${file.name} (${Math.round(file.size / 1024)} KB)...`;
+    videoUploadStatus.classList.remove('hidden');
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    fetch('/api/avatar/upload-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        video: e.target.result,
+        type: type
+      })
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) {
+        if (type === 'idle' && statusVideoIdleName) {
+          statusVideoIdleName.textContent = `✅ ${file.name} (พร้อมใช้)`;
+          statusVideoIdleName.style.color = '#10b981';
+        } else if (type === 'talking' && statusVideoTalkingName) {
+          statusVideoTalkingName.textContent = `✅ ${file.name} (พร้อมใช้)`;
+          statusVideoTalkingName.style.color = '#10b981';
+        }
+        if (videoUploadStatus) {
+          videoUploadStatus.textContent = `✨ อัปโหลดวิดีโอ ${res.filename} สำเร็จและปรับใช้กับจอไลฟ์สดทันที!`;
+        }
+        loadAvatarStudioStatus();
+      } else {
+        if (videoUploadStatus) {
+          videoUploadStatus.textContent = `❌ ผิดพลาด: ${res.error || 'Upload failed'}`;
+        }
+      }
+    })
+    .catch(err => {
+      if (videoUploadStatus) {
+        videoUploadStatus.textContent = `❌ อัปโหลดไม่สำเร็จ: ${err.message}`;
+      }
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+if (btnUploadVideoIdle && inputUploadVideoIdle) {
+  btnUploadVideoIdle.addEventListener('click', () => inputUploadVideoIdle.click());
+  inputUploadVideoIdle.addEventListener('change', () => {
+    if (inputUploadVideoIdle.files && inputUploadVideoIdle.files[0]) {
+      uploadDirectVideo(inputUploadVideoIdle.files[0], 'idle');
+    }
+  });
+}
+
+if (btnUploadVideoTalking && inputUploadVideoTalking) {
+  btnUploadVideoTalking.addEventListener('click', () => inputUploadVideoTalking.click());
+  inputUploadVideoTalking.addEventListener('change', () => {
+    if (inputUploadVideoTalking.files && inputUploadVideoTalking.files[0]) {
+      uploadDirectVideo(inputUploadVideoTalking.files[0], 'talking');
+    }
+  });
+}
+
 // Voice Recording & Cloning
 if (btnChooseVoiceFile && inputOwnerVoice) {
   btnChooseVoiceFile.addEventListener('click', () => inputOwnerVoice.click());

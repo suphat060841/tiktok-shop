@@ -509,6 +509,13 @@ test('Owner Studio UI: index.html has owner avatar & voice clone studio controls
   assert.ok(html.includes('left-tab-owner'), 'index.html has left-tab-owner');
   assert.ok(html.includes('btn-render-30fps'), 'index.html has 30 FPS render button');
   assert.ok(html.includes('btn-clone-voice'), 'index.html has Gemini Voice Replication button');
+  assert.ok(html.includes('btn-upload-video-idle'), 'index.html has direct idle video upload button');
+  assert.ok(html.includes('btn-upload-video-talking'), 'index.html has direct talking video upload button');
+});
+
+test('Owner Studio API: /api/avatar/upload-video handles direct MP4 upload route', () => {
+  const route = serverModule.app._router.stack.find(r => r.route && r.route.path === '/api/avatar/upload-video');
+  assert.ok(route, 'Route /api/avatar/upload-video exists in app router');
 });
 
 test('Video Generator: Even dimension alignment prevents avcodec_open2 libx264 error', () => {

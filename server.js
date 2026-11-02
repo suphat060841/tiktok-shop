@@ -1692,6 +1692,36 @@ app.post('/api/avatar/upload-face', async (req, res) => {
   }
 });
 
+app.post('/api/avatar/upload-video', async (req, res) => {
+  try {
+    const { video, type } = req.body;
+    if (!video || !type) {
+      return res.status(400).json({ error: 'Video base64 data and type (idle/talking) required' });
+    }
+    if (type !== 'idle' && type !== 'talking') {
+      return res.status(400).json({ error: 'Type must be either "idle" or "talking"' });
+    }
+
+    const filename = type === 'talking' ? 'avatar_talking.mp4' : 'avatar_idle.mp4';
+    const assetsDir = path.join(__dirname, 'public', 'assets');
+    if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
+
+    const base64Data = video.replace(/^data:video\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const targetPath = path.join(assetsDir, filename);
+
+    fs.writeFileSync(targetPath, buffer);
+    console.log(`[AvatarEngine] Direct MP4 uploaded: ${filename} (${buffer.length} bytes)`);
+
+    io.emit('avatar_updated', { timestamp: Date.now(), type, filename, directUpload: true });
+
+    res.json({ success: true, message: `Updated ${filename} successfully`, type, filename, size: buffer.length });
+  } catch (err) {
+    console.error('[AvatarEngine] Video upload error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/avatar/generate-loop', (req, res) => {
   const fps = parseInt(req.body?.fps) || 30;
   const autoMorph = req.body?.autoMorph !== false;
